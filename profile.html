@@ -104,13 +104,13 @@
 
             // Update profiles table
             const { error: profileError } = await supabaseClient
-              .from('profiles')
-              .update({
+             .from('profiles')
+             .update({
                     full_name: fullName,
                     bio,
                     website
                 })
-              .eq('id', currentUser.id);
+             .eq('id', currentUser.id);
 
             if (profileError) {
                 showMessage(profileError.message, 'error');
