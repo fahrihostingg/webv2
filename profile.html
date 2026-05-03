@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - Supabase Auth</title>
+    <title>Profile - Control Panel</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -39,7 +39,7 @@
                     <label>Password Baru</label>
                     <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ganti">
                 </div>
-                <button type="submit" class="success">Simpan Perubahan</button>
+                <button type="submit" class="success" id="saveBtn">Simpan Perubahan</button>
             </form>
         </div>
     </div>
@@ -52,19 +52,38 @@
             if (!currentUser) return;
 
             const { data: profile } = await supabaseClient
-               .from('profiles')
-               .select('*')
-               .eq('id', currentUser.id)
-               .single();
+             .from('profiles')
+             .select('*')
+             .eq('id', currentUser.id)
+             .single();
 
             document.getElementById('profileName').value = profile?.full_name || currentUser.user_metadata?.full_name || '';
             document.getElementById('profileEmail').value = currentUser.email;
             document.getElementById('profileBio').value = profile?.bio || '';
             document.getElementById('profileWebsite').value = profile?.website || '';
+
+            // User tak boleh edit kalau role user
+            if (currentUser.profile.role === 'user') {
+                document.querySelectorAll('input, textarea').forEach(el => {
+                    if (el.id !== 'profileEmail') el.disabled = true;
+                });
+                document.getElementById('saveBtn').style.display = 'none';
+                showMessage('Anda hanya boleh view. Hubungi Admin/Dev untuk edit.', 'error');
+            }
         })();
 
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+
+            // Block user dari submit
+            if (currentUser.profile.role === 'user') {
+                showMessage('Anda tidak ada permission untuk edit profile', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
 
             const fullName = document.getElementById('profileName').value;
             const bio = document.getElementById('profileBio').value;
@@ -76,17 +95,22 @@
             if (password) updates.password = password;
 
             const { error: authError } = await supabaseClient.auth.updateUser(updates);
-            if (authError) return showMessage(authError.message, 'error');
+            if (authError) {
+                showMessage(authError.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Simpan Perubahan';
+                return;
+            }
 
             // Update profiles table
             const { error: profileError } = await supabaseClient
-               .from('profiles')
-               .upsert({
-                    id: currentUser.id,
+              .from('profiles')
+              .update({
                     full_name: fullName,
                     bio,
                     website
-                });
+                })
+              .eq('id', currentUser.id);
 
             if (profileError) {
                 showMessage(profileError.message, 'error');
@@ -94,6 +118,9 @@
                 showMessage('Profile berhasil diupdate!', 'success');
                 document.getElementById('profilePassword').value = '';
             }
+
+            btn.disabled = false;
+            btn.textContent = 'Simpan Perubahan';
         });
     </script>
 </body>
