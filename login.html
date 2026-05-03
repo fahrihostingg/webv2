@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Pahri Platform v1.5.10</title>
+    <title>Login - Pahri Platform v1.6.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -13,7 +13,7 @@
         <div class="auth-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.10</p>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.6.0</p>
             </div>
 
             <h2 style="font-size: 20px;">Login</h2>
@@ -54,7 +54,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.5.10
+        <span class="dot"></span>v1.6.0
     </div>
 
     <div id="toastContainer"></div>
@@ -70,19 +70,18 @@
             document.getElementById('rememberMe').checked = true;
         }
 
-        // Check kalau dah login
         (async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
                 const { data: profile } = await supabaseClient
-                 .from('profiles')
-                 .select('role')
-                 .eq('id', session.user.id)
-                 .single();
+                .from('profiles')
+                .select('role')
+                .eq('id', session.user.id)
+                .single();
 
                 if (profile) {
                     const redirectUrl = profile.role === 'admin' || profile.role === 'dev' 
-                        ? '/admin' 
+                       ? '/admin' 
                         : '/dashboard';
                     window.location.replace(redirectUrl);
                 }
@@ -133,12 +132,11 @@
                 localStorage.removeItem('pahri_email');
             }
 
-            // Fetch profile - trigger dah auto-create
             const { data: profile, error: profileError } = await supabaseClient
-             .from('profiles')
-             .select('id, status, role, full_name')
-             .eq('id', authData.user.id)
-             .single();
+            .from('profiles')
+            .select('id, status, role, full_name')
+            .eq('id', authData.user.id)
+            .single();
 
             if (profileError) {
                 console.error('Profile error:', profileError);
@@ -153,7 +151,6 @@
 
             console.log(`Login time: ${Date.now() - start}ms`);
 
-            // Check status
             if (profile.status === 'pending') {
                 showMessage('⚠️ Akaun masih PENDING. Tunggu admin approve.', 'error');
                 await supabaseClient.auth.signOut();
@@ -174,12 +171,16 @@
                 return;
             }
 
-            // Success
+            // Log activity
+            await supabaseClient.from('activity_logs').insert({
+                user_id: authData.user.id,
+                action: 'login'
+            });
+
             showToast(`Welcome back, ${profile.full_name || email}! 🎉`, 'success');
             
-            // Redirect ikut role
             const redirectUrl = profile.role === 'admin' || profile.role === 'dev' 
-                ? '/admin' 
+               ? '/admin' 
                 : '/dashboard';
             
             setTimeout(() => window.location.replace(redirectUrl), 800);
