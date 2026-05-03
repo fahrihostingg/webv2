@@ -5,7 +5,6 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = supabase;
 const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Fungsi helper biar ga ulang code
 async function checkAuth() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     return session;
@@ -14,7 +13,7 @@ async function checkAuth() {
 async function requireAuth() {
     const session = await checkAuth();
     if (!session) {
-        window.location.href = 'login.html';
+        window.location.replace('/login');
         return null;
     }
     return session.user;
@@ -23,8 +22,10 @@ async function requireAuth() {
 async function requireGuest() {
     const session = await checkAuth();
     if (session) {
-        window.location.href = 'dashboard.html';
+        window.location.replace('/dashboard');
+        return true;
     }
+    return false;
 }
 
 function showMessage(text, type) {
@@ -38,5 +39,5 @@ function showMessage(text, type) {
 
 async function signOut() {
     await supabaseClient.auth.signOut();
-    window.location.href = 'login.html';
+    window.location.replace('/login');
 }
