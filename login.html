@@ -12,17 +12,17 @@
     <div class="container">
         <div class="content">
             <div id="message" class="message"></div>
-            <h2>Selamat Datang Kembali</h2>
+            <h2>Login</h2>
             <form id="loginForm">
                 <div class="input-group">
                     <label>Email</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email" autocomplete="email" required>
                 </div>
                 <div class="input-group">
                     <label>Password</label>
-                    <input type="password" id="password" required>
+                    <input type="password" id="password" autocomplete="current-password" required>
                 </div>
-                <button type="submit" id="btn">Login</button>
+                <button type="submit" id="loginBtn">Login</button>
             </form>
             <div class="link-text">
                 Belum ada akaun? <a href="/signup">Daftar di sini</a>
@@ -33,35 +33,35 @@
     <script>
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('btn');
+            const btn = document.getElementById('loginBtn');
             btn.disabled = true;
-            btn.textContent = 'Login...';
+            btn.textContent = 'Checking...';
 
-            // 1. Login terus, takyah check session
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: email.value,
-                password: password.value
-            });
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                });
 
-            if (error) {
-                showMessage(error.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Login';
-                return;
-            }
+                if (error) throw error;
 
-            // 2. Check status sekali je
-            const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('status')
-                .eq('id', data.user.id)
-                .maybeSingle();
+                btn.textContent = 'Loading profile...';
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('status')
+                    .eq('id', data.user.id)
+                    .maybeSingle();
 
-            if (profile?.status === 'approved') {
-                window.location.replace('/dashboard'); // replace lagi laju dari href
-            } else {
-                await supabaseClient.auth.signOut();
-                showMessage('Akaun masih pending approval', 'error');
+                if (profileError) throw profileError;
+                
+                if (profile?.status === 'approved') {
+                    window.location.replace('/dashboard');
+                } else {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Akaun masih pending approval');
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Login';
             }
