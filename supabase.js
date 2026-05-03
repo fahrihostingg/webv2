@@ -24,13 +24,28 @@ async function checkAuth(requiredRole = null) {
     }
 
     const { data: profile } = await supabaseClient
-       .from('profiles')
-       .select('*')
-       .eq('id', session.user.id)
-       .single();
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .single();
 
     if (!profile) {
         return { ok: false, redirect: '/login', msg: 'Profile tak jumpa' };
+    }
+
+    // CHECK MAINTENANCE MODE - DEV BYPASS
+    const { data: settings } = await supabaseClient
+     .from('system_settings')
+     .select('maintenance_mode')
+     .eq('id', 1)
+     .single();
+
+    if (settings && settings.maintenance_mode && profile.role!== 'dev') {
+        return { ok: false, redirect: '/maintenance', msg: 'Website maintenance' };
+    }
+
+    if (profile.is_banned) {
+        return { ok: false, redirect: '/login', msg: `Account BANNED: ${profile.banned_reason || 'No reason'}` };
     }
 
     if (profile.status === 'pending') {
@@ -41,7 +56,8 @@ async function checkAuth(requiredRole = null) {
         return { ok: false, redirect: '/login', msg: 'Akaun ditolak' };
     }
 
-    if (requiredRole && profile.role !== requiredRole && profile.role !== 'dev') {
+    // DEV dapat akses semua
+    if (requiredRole && profile.role!== requiredRole && profile.role!== 'dev') {
         return { ok: false, redirect: '/dashboard', msg: 'Takde akses' };
     }
 
