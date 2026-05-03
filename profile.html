@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - Pahri Platform v1.4.0</title>
+    <title>Profile - Pahri v1.6.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -12,8 +12,8 @@
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>👤 My Profile</h1>
-                <p>Manage your account settings</p>
+                <h1>👤 Profile Saya</h1>
+                <p id="userWelcome">Loading...</p>
             </div>
             <div>
                 <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
@@ -26,82 +26,76 @@
             <h3>✏️ Edit Profile</h3>
             <div id="message" class="message" style="display:none;"></div>
             
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div id="avatarPreview" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; font-size: 48px; color: white;">
+                    👤
+                </div>
+                <input type="file" id="avatarUpload" accept="image/*" style="display:none;" onchange="previewAvatar(event)">
+                <button class="btn-secondary" onclick="document.getElementById('avatarUpload').click()">
+                    📷 Tukar Avatar
+                </button>
+            </div>
+
             <form id="profileForm">
                 <div class="form-group">
                     <label>Full Name</label>
-                    <input type="text" id="fullName" placeholder="Your name" required>
+                    <input type="text" id="fullName" placeholder="Nama Penuh" required>
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="email" disabled style="background:#f5f5f5;cursor:not-allowed;">
-                    <small>Email tak boleh tukar</small>
+                    <input type="email" id="email" disabled style="opacity: 0.6;">
+                    <small style="color: var(--text-light);">Email tak boleh tukar</small>
                 </div>
                 <div class="form-group">
                     <label>Role</label>
-                    <input type="text" id="role" disabled style="background:#f5f5f5;cursor:not-allowed;">
+                    <input type="text" id="role" disabled style="opacity: 0.6;">
                 </div>
                 <div class="form-group">
                     <label>Status</label>
-                    <input type="text" id="status" disabled style="background:#f5f5f5;cursor:not-allowed;">
+                    <input type="text" id="status" disabled style="opacity: 0.6;">
                 </div>
                 <button type="submit" class="btn-primary" id="saveBtn">
-                    <span id="btnText">💾 Save Changes</span>
+                    <span id="btnText">💾 Simpan Perubahan</span>
                     <span id="btnLoading" style="display:none;">⏳ Saving...</span>
                 </button>
             </form>
         </div>
 
         <div class="card">
-            <h3>🔐 Change Password</h3>
-            <form id="passwordForm">
-                <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" id="newPassword" placeholder="Min 6 characters" minlength="6" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirm Password</label>
-                    <input type="password" id="confirmPassword" placeholder="Type again" required>
-                </div>
-                <button type="submit" class="btn-primary">🔒 Update Password</button>
-            </form>
+            <h3>🔐 Tukar Password</h3>
+            <button class="btn-secondary" onclick="window.location.href='/forgot-password'">
+                Reset Password Via Email
+            </button>
         </div>
 
         <div class="card">
-            <h3>📊 Account Stats</h3>
-            <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+            <h3>📊 Stats Akaun</h3>
+            <div class="stats">
                 <div class="stat-box">
-                    <h3 id="memberSince">-</h3>
-                    <p>📅 Member Since</p>
+                    <h3 id="loginCount">0</h3>
+                    <p>🔢 Total Login</p>
                 </div>
                 <div class="stat-box">
-                    <h3 id="lastLogin">-</h3>
-                    <p>🕐 Last Login</p>
+                    <h3 id="lastActive">-</h3>
+                    <p>⏰ Last Active</p>
                 </div>
                 <div class="stat-box">
-                    <h3 id="loginCount">-</h3>
-                    <p>🔓 Total Logins</p>
+                    <h3 id="joinDate">-</h3>
+                    <p>📅 Join Date</p>
                 </div>
             </div>
-        </div>
-
-        <div class="card" style="border: 2px solid var(--danger);">
-            <h3 style="color: var(--danger);">⚠️ Danger Zone</h3>
-            <p style="color: var(--text-light); margin-bottom: 20px;">Actions ni tak boleh undo!</p>
-            <button class="btn-reject" onclick="deleteAccount()" style="width: 100%; padding: 14px;">
-                🗑️ Delete My Account Permanently
-            </button>
         </div>
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.4.0
+        <span class="dot"></span>v1.6.0
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
         let currentUser = null;
-        let userProfile = null;
+        let avatarFile = null;
 
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
@@ -109,37 +103,71 @@
 
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-            showToast('Tema ditukar!', 'success');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode')? 'dark' : 'light');
         }
 
         (async () => {
-            const auth = await checkAuth();
-            if (!auth.ok) {
-                showToast(auth.msg, 'error');
-                setTimeout(() => window.location.replace(auth.redirect), 1500);
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.replace('/login');
                 return;
             }
 
-            currentUser = auth.user;
-            userProfile = auth.profile;
-            
-            // Fill form
-            document.getElementById('fullName').value = userProfile.full_name || '';
-            document.getElementById('email').value = userProfile.email;
-            document.getElementById('role').value = userProfile.role.toUpperCase();
-            document.getElementById('status').value = userProfile.status.toUpperCase();
-            
-            // Stats
-            const createdDate = new Date(userProfile.created_at).toLocaleDateString('id-ID');
-            document.getElementById('memberSince').textContent = createdDate;
-            document.getElementById('lastLogin').textContent = 'Today';
-            document.getElementById('loginCount').textContent = '42';
+            const { data: profile } = await supabaseClient
+               .from('profiles')
+               .select('*')
+               .eq('id', session.user.id)
+               .single();
+
+            if (!profile) {
+                showToast('Profile not found', 'error');
+                return;
+            }
+
+            currentUser = profile;
+            loadProfile();
         })();
+
+        function loadProfile() {
+            document.getElementById('userWelcome').textContent = `Hi, ${currentUser.full_name || currentUser.email}`;
+            document.getElementById('fullName').value = currentUser.full_name || '';
+            document.getElementById('email').value = currentUser.email;
+            document.getElementById('role').value = currentUser.role.toUpperCase();
+            document.getElementById('status').value = currentUser.status.toUpperCase();
+            document.getElementById('loginCount').textContent = currentUser.login_count || 0;
+            document.getElementById('lastActive').textContent = currentUser.last_active 
+               ? new Date(currentUser.last_active).toLocaleString('id-ID') 
+                : 'Never';
+            document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
+
+            if (currentUser.avatar_url) {
+                document.getElementById('avatarPreview').innerHTML = `<img src="${currentUser.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            } else {
+                const initial = (currentUser.full_name || currentUser.email)[0].toUpperCase();
+                document.getElementById('avatarPreview').textContent = initial;
+            }
+        }
+
+        function previewAvatar(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024) {
+                showToast('File terlalu besar! Max 2MB', 'error');
+                return;
+            }
+
+            avatarFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('avatarPreview').innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            };
+            reader.readAsDataURL(file);
+        }
 
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const fullName = document.getElementById('fullName').value.trim();
             const btnText = document.getElementById('btnText');
             const btnLoading = document.getElementById('btnLoading');
@@ -149,73 +177,69 @@
             btnLoading.style.display = 'inline';
             saveBtn.disabled = true;
 
+            let avatarUrl = currentUser.avatar_url;
+
+            // Upload avatar kalau ada
+            if (avatarFile) {
+                const fileExt = avatarFile.name.split('.').pop();
+                const fileName = `${currentUser.id}.${fileExt}`;
+                
+                const { error: uploadError } = await supabaseClient.storage
+                   .from('avatars')
+                   .upload(fileName, avatarFile, { upsert: true });
+
+                if (uploadError) {
+                    showMessage('Error upload avatar: ' + uploadError.message, 'error');
+                    btnText.style.display = 'inline';
+                    btnLoading.style.display = 'none';
+                    saveBtn.disabled = false;
+                    return;
+                }
+
+                const { data } = supabaseClient.storage.from('avatars').getPublicUrl(fileName);
+                avatarUrl = data.publicUrl;
+            }
+
+            // Update profile
             const { error } = await supabaseClient
-                .from('profiles')
-                .update({ full_name: fullName })
-                .eq('id', currentUser.id);
+               .from('profiles')
+               .update({ 
+                    full_name: fullName,
+                    avatar_url: avatarUrl,
+                    updated_at: new Date().toISOString()
+                })
+               .eq('id', currentUser.id);
 
             if (error) {
                 showMessage('Error: ' + error.message, 'error');
-            } else {
-                showToast('Profile updated! ✅', 'success');
-                showMessage('Profile berjaya update!', 'success');
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                saveBtn.disabled = false;
+                return;
             }
 
+            // Log activity
+            await supabaseClient.from('activity_logs').insert({
+                user_id: currentUser.id,
+                action: 'profile_update'
+            });
+
+            showToast('✅ Profile berjaya update!', 'success');
+            currentUser.full_name = fullName;
+            currentUser.avatar_url = avatarUrl;
+            
             btnText.style.display = 'inline';
             btnLoading.style.display = 'none';
             saveBtn.disabled = false;
         });
 
-        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
-
-            if (newPassword !== confirmPassword) {
-                showToast('Password tak sama!', 'error');
-                return;
-            }
-
-            if (newPassword.length < 6) {
-                showToast('Password min 6 karakter!', 'error');
-                return;
-            }
-
-            const { error } = await supabaseClient.auth.updateUser({
-                password: newPassword
-            });
-
-            if (error) {
-                showToast('Error: ' + error.message, 'error');
-            } else {
-                showToast('Password updated! 🔒', 'success');
-                document.getElementById('passwordForm').reset();
-            }
-        });
-
-        async function deleteAccount() {
-            if (!confirm('KAU PASTI NAK DELETE ACCOUNT? TAK BOLEH UNDO!')) return;
-            if (!confirm('LAST WARNING! Semua data akan hilang!')) return;
-
-            const { error } = await supabaseClient
-                .from('profiles')
-                .delete()
-                .eq('id', currentUser.id);
-
-            if (error) {
-                showToast('Error: ' + error.message, 'error');
-            } else {
-                await supabaseClient.auth.signOut();
-                showToast('Account deleted. Bye! 👋', 'success');
-                setTimeout(() => window.location.replace('/signup'), 2000);
-            }
-        }
-
         async function logout() {
+            await supabaseClient.from('activity_logs').insert({
+                user_id: currentUser.id,
+                action: 'logout'
+            });
             await supabaseClient.auth.signOut();
-            showToast('Logout berjaya!', 'success');
-            setTimeout(() => window.location.replace('/login'), 1000);
+            window.location.replace('/login');
         }
 
         function showMessage(text, type) {
@@ -230,10 +254,8 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-            
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-            
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
