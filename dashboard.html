@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
     <script>
-        // Apply tema SEBELUM page render untuk elak flash
         (function() {
             const theme = localStorage.getItem('theme');
             if (theme === 'dark') {
@@ -78,7 +77,6 @@
     <script>
         let currentUser = null;
 
-        // Apply tema masa DOM load
         document.addEventListener('DOMContentLoaded', () => {
             applyTheme();
         });
@@ -100,11 +98,11 @@
 
         function toggleTheme() {
             const isDark = document.body.classList.contains('dark-mode');
-            const newTheme = isDark ? 'light' : 'dark';
+            const newTheme = isDark? 'light' : 'dark';
             
             localStorage.setItem('theme', newTheme);
             applyTheme();
-            showToast(`Tema tukar ke ${newTheme === 'dark' ? 'Gelap' : 'Terang'}!`, 'success');
+            showToast(`Tema tukar ke ${newTheme === 'dark'? 'Gelap' : 'Terang'}!`, 'success');
         }
 
         (async () => {
@@ -115,12 +113,12 @@
             }
 
             const { data: profile } = await supabaseClient
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
+             .from('profiles')
+             .select('*')
+             .eq('id', session.user.id)
+             .single();
 
-            if (!profile || profile.status !== 'approved') {
+            if (!profile || profile.status!== 'approved') {
                 showToast('Akaun belum approved', 'error');
                 setTimeout(() => window.location.replace('/login'), 1500);
                 return;
@@ -134,7 +132,7 @@
             document.getElementById('userWelcome').textContent = `Hi, ${currentUser.full_name || currentUser.email}`;
             document.getElementById('loginCount').textContent = currentUser.login_count || 0;
             document.getElementById('lastActive').textContent = currentUser.last_active 
-               ? new Date(currentUser.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+              ? new Date(currentUser.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                 : 'Baru je';
             document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
 
