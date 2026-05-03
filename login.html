@@ -1,19 +1,28 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Pahri Platform v1.6.0</title>
+    <title>Login - Pahri Platform v1.6.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
 </head>
 <body class="auth-body">
     <div class="auth-container">
         <div class="auth-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.6.0</p>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.6.2</p>
             </div>
 
             <h2 style="font-size: 20px;">Login</h2>
@@ -54,16 +63,12 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.6.0
+        <span class="dot"></span>v1.6.2
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
-        }
-
         const rememberedEmail = localStorage.getItem('pahri_email');
         if (rememberedEmail) {
             document.getElementById('email').value = rememberedEmail;
@@ -102,16 +107,12 @@
             btnLoading.style.display = 'inline';
             loginBtn.disabled = true;
 
-            const start = Date.now();
-
             const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
 
             if (authError) {
-                console.error('Auth error:', authError);
-                
                 if (authError.message.includes('Invalid login credentials')) {
                     showMessage('Email atau password salah.', 'error');
                 } else if (authError.message.includes('Email not confirmed')) {
@@ -139,22 +140,17 @@
             .single();
 
             if (profileError) {
-                console.error('Profile error:', profileError);
                 showMessage('Error load profile. Contact admin.', 'error');
                 await supabaseClient.auth.signOut();
-                clearCache();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 loginBtn.disabled = false;
                 return;
             }
 
-            console.log(`Login time: ${Date.now() - start}ms`);
-
             if (profile.status === 'pending') {
                 showMessage('⚠️ Akaun masih PENDING. Tunggu admin approve.', 'error');
                 await supabaseClient.auth.signOut();
-                clearCache();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 loginBtn.disabled = false;
@@ -164,14 +160,12 @@
             if (profile.status === 'rejected') {
                 showMessage('❌ Akaun ditolak. Contact admin.', 'error');
                 await supabaseClient.auth.signOut();
-                clearCache();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 loginBtn.disabled = false;
                 return;
             }
 
-            // Log activity
             await supabaseClient.from('activity_logs').insert({
                 user_id: authData.user.id,
                 action: 'login'
@@ -198,17 +192,10 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
-        }
-
-        function clearCache() {
-            localStorage.removeItem('supabase.auth.token');
-            sessionStorage.clear();
         }
     </script>
 </body>
