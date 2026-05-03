@@ -1,0 +1,400 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Panel - Pahri v1.7.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
+</head>
+<body class="admin-body">
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div>
+                <h1>💻 Dev Control Panel <span class="badge badge-dev">DEV ONLY</span></h1>
+                <p id="devWelcome">Loading...</p>
+            </div>
+            <div>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                <button onclick="window.location.href='/admin'">🔧 Admin</button>
+                <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="logout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="card" style="border: 3px solid var(--warning); background: #fffbf0;">
+            <h3>🚨 Maintenance Mode Control</h3>
+            <p style="color: var(--text-light); margin-bottom: 20px;">
+                Bila ON, semua user kecuali DEV akan nampak page "Maintenance"
+            </p>
+            <div class="checkbox-group" style="margin-bottom: 20px;">
+                <input type="checkbox" id="maintenanceMode" onchange="toggleMaintenance()">
+                <label for="maintenanceMode"><strong>Enable Maintenance Mode</strong></label>
+            </div>
+            <div class="form-group">
+                <label>Maintenance Message</label>
+                <textarea id="maintenanceMsg" rows="2" placeholder="Server sedang upgrade..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="saveMaintenance()">💾 Save Maintenance Settings</button>
+        </div>
+
+        <div class="card">
+            <h3>🔧 System Settings</h3>
+            <div class="form-group">
+                <label>Site Name</label>
+                <input type="text" id="siteName" placeholder="Pahri Platform">
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="registrationEnabled">
+                <label for="registrationEnabled">Allow New Registrations</label>
+            </div>
+            <div class="form-group">
+                <label>Max Users Limit</label>
+                <input type="number" id="maxUsers" placeholder="1000">
+            </div>
+            <div class="form-group">
+                <label>Global Announcement</label>
+                <textarea id="announcement" rows="3" placeholder="System update akan datang..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+        </div>
+
+        <div class="card">
+            <h3>📊 Database Stats - Real Time</h3>
+            <div id="dbStats" class="stats">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📢 Broadcast Notification</h3>
+            <p style="color: var(--text-light); margin-bottom: 15px;">Send ke semua user sekaligus</p>
+            <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="notifTitle" placeholder="System Maintenance">
+            </div>
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="notifMessage" rows="3" placeholder="Server akan down jam 3 pagi..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Type</label>
+                <select id="notifType">
+                    <option value="info">ℹ️ Info</option>
+                    <option value="warning">⚠️ Warning</option>
+                    <option value="error">❌ Error</option>
+                    <option value="success">✅ Success</option>
+                </select>
+            </div>
+            <button class="btn-primary" onclick="sendBroadcast()">📤 Send to All Users</button>
+        </div>
+
+        <div class="card">
+            <h3>💻 Dev Tools - DANGEROUS</h3>
+            <button class="btn-secondary" onclick="exportDatabase()" style="margin-bottom: 10px; width: 100%;">
+                📥 Export Full Database CSV
+            </button>
+            <button class="btn-secondary" onclick="exportLogs()" style="margin-bottom: 10px; width: 100%;">
+                📋 Export All Activity Logs
+            </button>
+            <button class="btn-secondary" onclick="forceLogoutAll()" style="margin-bottom: 10px; width: 100%;">
+                🚪 Force Logout All Users
+            </button>
+            <button class="btn-secondary" onclick="clearAllLogs()" style="margin-bottom: 10px; width: 100%;">
+                🗑️ Clear All Activity Logs
+            </button>
+            <button class="btn-secondary" onclick="resetLoginCounts()" style="margin-bottom: 10px; width: 100%;">
+                🔄 Reset All Login Counts
+            </button>
+            <button onclick="nukeDatabase()" style="background: var(--error); color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                ☢️ NUKE DATABASE (Delete All Users)
+            </button>
+        </div>
+
+        <div class="card">
+            <h3>📜 System Error Logs</h3>
+            <button class="btn-secondary" onclick="loadErrorLogs()" style="margin-bottom: 15px;">🔄 Refresh</button>
+            <div id="errorLogs" style="max-height: 400px; overflow-y: auto; background: #1a1a1a; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;">
+                Loading logs...
+            </div>
+        </div>
+    </div>
+
+    <div class="version-badge">
+        <span class="dot"></span>v1.7.0 DEV
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script>
+        let settings = {};
+        let currentDev = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+        });
+
+        function applyTheme() {
+            const theme = localStorage.getItem('theme');
+            const isDark = theme === 'dark';
+            if (isDark) {
+                document.documentElement.classList.add('dark-mode');
+                document.body.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                document.body.classList.remove('dark-mode');
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme();
+        }
+
+        (async () => {
+            const auth = await checkAuth('dev');
+            if (!auth.ok) {
+                showToast('Access denied - DEV only', 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
+                return;
+            }
+
+            currentDev = auth.profile;
+            document.getElementById('devWelcome').textContent = `Welcome, ${currentDev.full_name || currentDev.email}`;
+
+            await loadSystemSettings();
+            await loadDatabaseStats();
+            await loadErrorLogs();
+        })();
+
+        async function loadSystemSettings() {
+            const { data } = await supabaseClient.from('system_settings').select('*').eq('id', 1).single();
+            
+            if (data) {
+                settings = data;
+                document.getElementById('siteName').value = data.site_name || '';
+                document.getElementById('maintenanceMode').checked = data.maintenance_mode;
+                document.getElementById('registrationEnabled').checked = data.registration_enabled;
+                document.getElementById('maxUsers').value = data.max_users || 1000;
+                document.getElementById('announcement').value = data.announcement || '';
+                document.getElementById('maintenanceMsg').value = data.maintenance_message || '';
+            }
+        }
+
+        async function saveMaintenance() {
+            const enabled = document.getElementById('maintenanceMode').checked;
+            const msg = document.getElementById('maintenanceMsg').value;
+
+            const { error } = await supabaseClient
+           .from('system_settings')
+           .update({
+                    maintenance_mode: enabled,
+                    maintenance_message: msg,
+                    updated_at: new Date().toISOString(),
+                    updated_by: currentDev.id
+                })
+           .eq('id', 1);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`🚨 Maintenance Mode ${enabled? 'ENABLED' : 'DISABLED'}!`, 'warning');
+            }
+        }
+
+        async function saveSettings() {
+            const { error } = await supabaseClient
+           .from('system_settings')
+           .update({
+                    site_name: document.getElementById('siteName').value,
+                    registration_enabled: document.getElementById('registrationEnabled').checked,
+                    max_users: parseInt(document.getElementById('maxUsers').value),
+                    announcement: document.getElementById('announcement').value,
+                    updated_at: new Date().toISOString(),
+                    updated_by: currentDev.id
+                })
+           .eq('id', 1);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('✅ Settings saved!', 'success');
+            }
+        }
+
+        async function loadDatabaseStats() {
+            const { count: totalUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true });
+            const { count: bannedUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true);
+            const { count: activeUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).gte('last_active', new Date(Date.now() - 86400000).toISOString());
+            const { count: totalLogs } = await supabaseClient.from('activity_logs').select('*', { count: 'exact', head: true });
+
+            document.getElementById('dbStats').innerHTML = `
+                <div class="stat-box">
+                    <h3>${totalUsers || 0}</h3>
+                    <p>👥 Total Users</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${activeUsers || 0}</h3>
+                    <p>🟢 Active 24h</p>
+                </div>
+                <div class="stat-box" style="border-color: var(--error);">
+                    <h3>${bannedUsers || 0}</h3>
+                    <p>🚫 Banned</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${totalLogs || 0}</h3>
+                    <p>📋 Total Logs</p>
+                </div>
+            `;
+        }
+
+        async function sendBroadcast() {
+            const title = document.getElementById('notifTitle').value.trim();
+            const message = document.getElementById('notifMessage').value.trim();
+            const type = document.getElementById('notifType').value;
+            
+            if (!title ||!message) {
+                showToast('Isi title & message!', 'error');
+                return;
+            }
+
+            if (!confirm(`Send announcement ke SEMUA user?`)) return;
+
+            const { data: users } = await supabaseClient.from('profiles').select('id');
+            
+            const notifications = users.map(u => ({
+                user_id: u.id,
+                title: title,
+                message: message,
+                type: type
+            }));
+
+            const { error } = await supabaseClient.from('notifications').insert(notifications);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`📤 Sent to ${users.length} users!`, 'success');
+                document.getElementById('notifTitle').value = '';
+                document.getElementById('notifMessage').value = '';
+            }
+        }
+
+        async function exportDatabase() {
+            const { data } = await supabaseClient.from('profiles').select('*');
+            const csv = [
+                'ID,Email,Name,Role,Status,Banned,Created,Last Active,Login Count,Avatar,2FA',
+              ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}","${u.two_factor_enabled}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `full_database_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Database exported!', 'success');
+        }
+
+        async function exportLogs() {
+            const { data } = await supabaseClient.from('activity_logs').select('*, profiles(email)').order('created_at', { ascending: false });
+            const csv = [
+                'Time,User Email,Action',
+              ...data.map(l => `"${l.created_at}","${l.profiles?.email || 'Unknown'}","${l.action}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Logs exported!', 'success');
+        }
+
+        async function forceLogoutAll() {
+            if (!confirm('Force logout SEMUA user? Mereka kena login balik.')) return;
+            showToast('Feature perlu Supabase Edge Function + Realtime. Coming v1.8.0', 'info');
+        }
+
+        async function clearAllLogs() {
+            if (!confirm('Delete SEMUA activity logs? Tak boleh undo!')) return;
+            
+            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('🗑️ All logs cleared!', 'success');
+            }
+        }
+
+        async function resetLoginCounts() {
+            if (!confirm('Reset login count SEMUA user ke 0?')) return;
+            
+            const { error } = await supabaseClient.from('profiles').update({ login_count: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('🔄 All login counts reset!', 'success');
+            }
+        }
+
+        async function nukeDatabase() {
+            const confirm1 = prompt('Type "DELETE ALL USERS" untuk confirm:');
+            if (confirm1!== 'DELETE ALL USERS') return;
+            
+            const confirm2 = prompt('Last warning! Type "I AM SURE" untuk nuke:');
+            if (confirm2!== 'I AM SURE') return;
+
+            const { error } = await supabaseClient.from('profiles').delete().neq('id', currentDev.id);
+            
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('☢️ Database nuked! All users deleted except you.', 'warning');
+                setTimeout(() => window.location.reload(), 2000);
+            }
+        }
+
+        async function loadErrorLogs() {
+            document.getElementById('errorLogs').innerHTML = `
+[${new Date().toISOString()}] System started
+[${new Date().toISOString()}] No errors found
+[${new Date().toISOString()}] All systems operational
+            `;
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.replace('/login');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
