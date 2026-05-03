@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -39,7 +38,7 @@
         </div>
 
         <div class="card">
-            <h3>📈 User Growth Analytics</h3>
+            <h3>📈 User Growth Analytics - Real Data</h3>
             <canvas id="userChart" style="max-height: 300px;"></canvas>
         </div>
 
@@ -91,6 +90,7 @@
         let pendingUsers = [];
         let selectedUsers = new Set();
         let currentAdmin = null;
+        window.userChartInstance = null;
 
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
@@ -115,28 +115,27 @@
 
             await loadStats();
             await loadUsers();
-            initChart();
         })();
 
         async function loadStats() {
             const { count: totalUsers } = await supabaseClient
-             .from('profiles')
-             .select('*', { count: 'exact', head: true });
+            .from('profiles')
+            .select('*', { count: 'exact', head: true });
 
             const { count: pendingCount } = await supabaseClient
-             .from('profiles')
-             .select('*', { count: 'exact', head: true })
-             .eq('status', 'pending');
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'pending');
 
             const { count: adminCount } = await supabaseClient
-             .from('profiles')
-             .select('*', { count: 'exact', head: true })
-             .eq('role', 'admin');
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'admin');
 
             const { count: approvedCount } = await supabaseClient
-             .from('profiles')
-             .select('*', { count: 'exact', head: true })
-             .eq('status', 'approved');
+            .from('profiles')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'approved');
 
             document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
@@ -158,39 +157,138 @@
             `;
         }
 
-        function initChart() {
+        async function initChart() {
             const ctx = document.getElementById('userChart');
-            new Chart(ctx, {
+            
+            const { data: users, error } = await supabaseClient
+            .from('profiles')
+            .select('created_at, status')
+            .order('created_at', { ascending: true });
+
+            if (error) {
+                console.error('Chart error:', error);
+                ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Error load chart: ' + error.message + '</p>';
+                return;
+            }
+
+            if (!users || users.length === 0) {
+                ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
+                return;
+            }
+
+            const months = [];
+            const userCounts = [];
+            const pendingCounts = [];
+            const approvedCounts = [];
+            
+            for (let i = 5; i >= 0; i--) {
+                const date = new Date();
+                date.setMonth(date.getMonth() - i);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const monthLabel = date.toLocaleDateString('id-ID', { month: 'short' });
+                
+                months.push(monthLabel);
+                
+                const monthUsers = users.filter(u => {
+                    const userDate = new Date(u.created_at);
+                    const userMonthKey = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
+                    return userMonthKey === monthKey;
+                });
+                
+                userCounts.push(monthUsers.length);
+                pendingCounts.push(monthUsers.filter(u => u.status === 'pending').length);
+                approvedCounts.push(monthUsers.filter(u => u.status === 'approved').length);
+            }
+
+            if (window.userChartInstance) {
+                window.userChartInstance.destroy();
+            }
+
+            window.userChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{
-                        label: 'New Users',
-                        data: [12, 19, 15, 25, 22, 30],
-                        backgroundColor: 'rgba(102,126,234,0.8)',
-                        borderRadius: 8
-                    }]
+                    labels: months,
+                    datasets: [
+                        {
+                            label: 'Total Users',
+                            data: userCounts,
+                            backgroundColor: 'rgba(102,126,234,0.8)',
+                            borderRadius: 8,
+                            borderWidth: 0
+                        },
+                        {
+                            label: 'Approved',
+                            data: approvedCounts,
+                            backgroundColor: 'rgba(34,197,94,0.8)',
+                            borderRadius: 8,
+                            borderWidth: 0
+                        },
+                        {
+                            label: 'Pending',
+                            data: pendingCounts,
+                            backgroundColor: 'rgba(251,191,36,0.8)',
+                            borderRadius: 8,
+                            borderWidth: 0
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15,
+                                font: { size: 12 }
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            padding: 12
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                font: { size: 11 }
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                font: { size: 11 }
+                            }
+                        }
+                    }
                 }
             });
+
+            console.log('Chart loaded:', { months, userCounts, approvedCounts, pendingCounts });
         }
 
         async function loadUsers() {
             console.log('Loading users...');
             
             const { data: users, error, count } = await supabaseClient
-             .from('profiles')
-             .select('*', { count: 'exact' })
-             .order('created_at', { ascending: false });
+            .from('profiles')
+            .select('*', { count: 'exact' })
+            .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
                 console.error('Load users error:', error);
-                console.error('Details:', error.details, error.hint);
                 document.getElementById('usersList').innerHTML = `
                     <div style="padding:20px;background:#fee;border:2px solid #f88;border-radius:8px;">
                         <strong>Error:</strong> ${error.message}<br>
@@ -207,7 +305,7 @@
             allUsers = users || [];
             pendingUsers = allUsers.filter(u => u.status === 'pending');
 
-            document.getElementById('totalUsersDisplay').textContent = `(DB: ${count}, Loaded: ${allUsers.length})`;
+            document.getElementById('totalUsersDisplay').textContent = `(Total: ${allUsers.length})`;
 
             if (pendingUsers.length > 0) {
                 document.getElementById('pendingSection').style.display = 'block';
@@ -218,6 +316,7 @@
             }
 
             renderUsers(allUsers);
+            await initChart();
         }
 
         function renderPendingUsers() {
@@ -264,10 +363,10 @@
                     <input type="checkbox" class="user-checkbox"
                            value="${user.id}"
                            ${selectedUsers.has(user.id)? 'checked' : ''}
-                           ${isCurrentUser || isDev ? 'disabled title="Cannot select"' : ''}
+                           ${isCurrentUser || isDev? 'disabled title="Cannot select"' : ''}
                            onchange="toggleUserSelection('${user.id}')">
                     <div class="user-info">
-                        <strong>${user.full_name || 'No Name'} ${isCurrentUser ? '(You)' : ''}</strong>
+                        <strong>${user.full_name || 'No Name'} ${isCurrentUser? '(You)' : ''}</strong>
                         <small>${user.email}</small>
                         <span class="badge badge-${user.role}">${user.role}</span>
                         <span class="badge badge-${user.status}">${user.status}</span>
@@ -280,14 +379,14 @@
                             <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Approve</button>
                             <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Reject</button>
                         ` : ''}
-                        ${!isCurrentUser ? `
-                            <select onchange="changeRole('${user.id}', this.value)" ${isDev ? 'disabled title="Dev role protected"' : ''}>
+                        ${!isCurrentUser? `
+                            <select onchange="changeRole('${user.id}', this.value)" ${isDev? 'disabled title="Dev role protected"' : ''}>
                                 <option value="user" ${user.role === 'user'? 'selected' : ''}>User</option>
                                 <option value="admin" ${user.role === 'admin'? 'selected' : ''}>Admin</option>
                                 <option value="dev" ${user.role === 'dev'? 'selected' : ''}>Dev</option>
                             </select>
                         ` : '<span style="font-size:12px;color:#999;">Current User</span>'}
-                        ${isDev ? '<span style="font-size:12px;color:#f59e0b;">🔒 Protected</span>' : ''}
+                        ${isDev? '<span style="font-size:12px;color:#f59e0b;">🔒 Protected</span>' : ''}
                     </div>
                 </div>
             `}).join('');
@@ -338,13 +437,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-             .from('profiles')
-             .update({
+            .from('profiles')
+            .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-             .eq('id', userId);
+            .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -359,9 +458,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-             .from('profiles')
-             .update({ status: 'rejected' })
-             .eq('id', userId);
+            .from('profiles')
+            .update({ status: 'rejected' })
+            .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -388,9 +487,9 @@
             }
 
             const { error } = await supabaseClient
-             .from('profiles')
-             .update({ role: newRole })
-             .eq('id', userId);
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -406,13 +505,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-             .from('profiles')
-             .update({
+            .from('profiles')
+            .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-             .in('id', Array.from(selectedUsers));
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -429,9 +528,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-             .from('profiles')
-             .update({ status: 'rejected' })
-             .in('id', Array.from(selectedUsers));
+            .from('profiles')
+            .update({ status: 'rejected' })
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -448,9 +547,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-             .from('profiles')
-             .delete()
-             .in('id', Array.from(selectedUsers));
+            .from('profiles')
+            .delete()
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -465,7 +564,7 @@
         function exportUsers() {
             const csv = [
                 'Name,Email,Role,Status,Created,Approved At',
-              ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.approved_at || ''}"`)
+             ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.approved_at || ''}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
