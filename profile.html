@@ -12,7 +12,7 @@
     <div class="container">
         <div class="content">
             <div class="nav">
-                <button class="secondary" onclick="window.location.href='dashboard.html'">← Kembali</button>
+                <button class="secondary" onclick="window.location.replace('/dashboard')">← Kembali</button>
             </div>
 
             <div id="message" class="message"></div>
@@ -26,6 +26,14 @@
                 <div class="input-group">
                     <label>Email</label>
                     <input type="email" id="profileEmail" disabled>
+                </div>
+                <div class="input-group">
+                    <label>Bio</label>
+                    <textarea id="profileBio" placeholder="Ceritakan tentang diri kamu..." rows="3"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Website</label>
+                    <input type="url" id="profileWebsite" placeholder="https://website.com">
                 </div>
                 <div class="input-group">
                     <label>Password Baru</label>
@@ -43,23 +51,45 @@
             currentUser = await requireAuth();
             if (!currentUser) return;
 
-            document.getElementById('profileName').value = currentUser.user_metadata?.full_name || '';
+            const { data: profile } = await supabaseClient
+               .from('profiles')
+               .select('*')
+               .eq('id', currentUser.id)
+               .single();
+
+            document.getElementById('profileName').value = profile?.full_name || currentUser.user_metadata?.full_name || '';
             document.getElementById('profileEmail').value = currentUser.email;
+            document.getElementById('profileBio').value = profile?.bio || '';
+            document.getElementById('profileWebsite').value = profile?.website || '';
         })();
 
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const fullName = document.getElementById('profileName').value;
+            const bio = document.getElementById('profileBio').value;
+            const website = document.getElementById('profileWebsite').value;
             const password = document.getElementById('profilePassword').value;
 
+            // Update auth metadata
             const updates = { data: { full_name: fullName } };
             if (password) updates.password = password;
 
-            const { error } = await supabaseClient.auth.updateUser(updates);
+            const { error: authError } = await supabaseClient.auth.updateUser(updates);
+            if (authError) return showMessage(authError.message, 'error');
 
-            if (error) {
-                showMessage(error.message, 'error');
+            // Update profiles table
+            const { error: profileError } = await supabaseClient
+               .from('profiles')
+               .upsert({
+                    id: currentUser.id,
+                    full_name: fullName,
+                    bio,
+                    website
+                });
+
+            if (profileError) {
+                showMessage(profileError.message, 'error');
             } else {
                 showMessage('Profile berhasil diupdate!', 'success');
                 document.getElementById('profilePassword').value = '';
