@@ -31,16 +31,11 @@
     </div>
 
     <script>
-        async function checkSession() {
+        // Kalau dah login + approved, terus ke dashboard
+        (async () => {
             const profile = await getProfile();
-            if (profile && profile.status === 'approved') {
-                window.location.href = '/dashboard';
-            } else if (profile && profile.status === 'pending') {
-                await supabaseClient.auth.signOut();
-                showMessage('Akaun masih pending. Tunggu admin approve.', 'error');
-            }
-        }
-        document.addEventListener('DOMContentLoaded', checkSession);
+            if (profile?.status === 'approved') window.location.href = '/dashboard';
+        })();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -48,10 +43,10 @@
             btn.disabled = true;
             btn.textContent = 'Loading...';
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            const { error } = await supabaseClient.auth.signInWithPassword({ 
+                email: document.getElementById('email').value, 
+                password: document.getElementById('password').value 
+            });
 
             if (error) {
                 showMessage(error.message, 'error');
@@ -61,14 +56,11 @@
             }
 
             const profile = await getProfile();
-            if (!profile) {
-                showMessage('Profile tak jumpa', 'error');
-                await supabaseClient.auth.signOut();
-            } else if (profile.status !== 'approved') {
-                showMessage('Akaun anda masih pending approval.', 'error');
-                await supabaseClient.auth.signOut();
-            } else {
+            if (profile?.status === 'approved') {
                 window.location.href = '/dashboard';
+            } else {
+                showMessage('Akaun masih pending approval.', 'error');
+                await supabaseClient.auth.signOut();
             }
 
             btn.disabled = false;
