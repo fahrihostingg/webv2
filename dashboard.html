@@ -9,18 +9,17 @@
     <script src="supabase.js"></script>
 </head>
 <body>
-    <div class="container" style="max-width: 900px;">
+    <div class="container wide">
         <div class="content">
             <div class="nav">
-                <button class="secondary" onclick="window.location.href='/dashboard'">Dashboard</button>
-                <button class="secondary" onclick="window.location.href='/profile'">Profile</button>
-                <button class="secondary admin-only" id="adminBtn" style="display:none" onclick="loadAllPosts()">All Posts</button>
+                <button class="secondary" onclick="window.location.replace('/dashboard')">Dashboard</button>
+                <button class="secondary" onclick="window.location.replace('/profile')">Profile</button>
+                <button class="secondary" id="adminBtn" style="display:none" onclick="loadAllPosts()">All Posts</button>
                 <button class="danger" onclick="signOut()" style="margin-left: auto;">Keluar</button>
             </div>
 
             <div id="message" class="message"></div>
 
-            <!-- USER INFO -->
             <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
                 <div class="avatar" id="userAvatar" style="margin: 0; width: 60px; height: 60px; font-size: 24px;">U</div>
                 <div>
@@ -34,7 +33,6 @@
                 </div>
             </div>
 
-            <!-- CREATE POST -->
             <div style="background: white; border: 2px solid #e9ecef; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
                 <h3 style="margin-bottom: 16px;">Buat Post Baru</h3>
                 <form id="postForm">
@@ -42,19 +40,17 @@
                         <input type="text" id="postTitle" placeholder="Judul post..." required>
                     </div>
                     <div class="input-group">
-                        <textarea id="postContent" placeholder="Tulis sesuatu..." rows="3" style="width: 100%; padding: 12px 16px; border: 2px solid #e9ecef; border-radius: 8px; font-family: inherit; font-size: 15px; resize: vertical;"></textarea>
+                        <textarea id="postContent" placeholder="Tulis sesuatu..." rows="3"></textarea>
                     </div>
                     <button type="submit" class="success" style="margin: 0;">Publish Post</button>
                 </form>
             </div>
 
-            <!-- SEARCH -->
             <div class="input-group">
                 <input type="text" id="searchPost" placeholder="🔍 Cari post..." oninput="filterPosts()">
             </div>
 
-            <!-- POSTS LIST -->
-            <h3 style="margin-bottom: 16px;">Post Kamu</h3>
+            <h3 style="margin-bottom: 16px;" id="postHeader">Post Kamu</h3>
             <div id="postsList"></div>
         </div>
     </div>
@@ -62,6 +58,7 @@
     <script>
         let currentUser = null;
         let allPosts = [];
+        let isAdminView = false;
 
         (async () => {
             currentUser = await requireAuth();
@@ -81,7 +78,6 @@
             loadPosts();
         })();
 
-        // CREATE POST
         document.getElementById('postForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('postTitle').value;
@@ -98,17 +94,18 @@
             } else {
                 showMessage('Post berhasil dibuat!', 'success');
                 document.getElementById('postForm').reset();
-                loadPosts();
+                isAdminView? loadAllPosts() : loadPosts();
             }
         });
 
-        // LOAD POSTS
         async function loadPosts() {
+            isAdminView = false;
+            document.getElementById('postHeader').textContent = 'Post Kamu';
             const { data, error } = await supabaseClient
-               .from('posts')
-               .select('*')
-               .eq('user_id', currentUser.id)
-               .order('created_at', { ascending: false });
+              .from('posts')
+              .select('*')
+              .eq('user_id', currentUser.id)
+              .order('created_at', { ascending: false });
 
             if (error) return showMessage(error.message, 'error');
 
@@ -117,17 +114,17 @@
             renderPosts(data);
         }
 
-        // LOAD ALL POSTS - ADMIN ONLY
         async function loadAllPosts() {
+            isAdminView = true;
+            document.getElementById('postHeader').textContent = 'Semua Posts (Admin)';
             const { data, error } = await supabaseClient
-               .from('posts')
-               .select('*, auth.users(email)')
-               .order('created_at', { ascending: false });
+              .from('posts')
+              .select('*, profiles(full_name)')
+              .order('created_at', { ascending: false });
 
             if (error) return showMessage(error.message, 'error');
 
             allPosts = data;
-            document.querySelector('h3').textContent = 'Semua Posts (Admin)';
             renderPosts(data, true);
         }
 
@@ -139,45 +136,42 @@
             }
 
             list.innerHTML = posts.map(post => `
-                <div class="post-card" style="background: white; border: 2px solid #e9ecef; padding: 16px; border-radius: 12px; margin-bottom: 12px;">
+                <div class="post-card">
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                        <h4 style="margin: 0; color: #212529;">${post.title}</h4>
+                        <h4 style="margin: 0;">${post.title}</h4>
                         <div>
-                            <button class="link-btn" onclick="editPost('${post.id}')" style="padding: 4px 8px;">Edit</button>
-                            <button class="link-btn" onclick="deletePost('${post.id}')" style="padding: 4px 8px; color: #dc3545;">Delete</button>
+                            <button class="link-btn" onclick="editPost('${post.id}')">Edit</button>
+                            <button class="link-btn" onclick="deletePost('${post.id}')" style="color: #dc3545;">Delete</button>
                         </div>
-                    <p style="color: #495057; margin-bottom: 8px; white-space: pre-wrap;">${post.content || ''}</p>
-                    <div style="font-size: 12px; color: #adb5bd;">
+                    </div>
+                    <p>${post.content || ''}</p>
+                    <div class="post-meta">
                         ${new Date(post.created_at).toLocaleString('id-ID')}
-                        ${isAdmin && post.auth?.users? ` • ${post.auth.users.email}` : ''}
+                        ${isAdmin && post.profiles?.full_name? ` • ${post.profiles.full_name}` : ''}
                     </div>
                 </div>
             `).join('');
         }
 
-        // SEARCH/FILTER
         function filterPosts() {
             const query = document.getElementById('searchPost').value.toLowerCase();
             const filtered = allPosts.filter(p =>
                 p.title.toLowerCase().includes(query) ||
                 (p.content && p.content.toLowerCase().includes(query))
             );
-            renderPosts(filtered);
+            renderPosts(filtered, isAdminView);
         }
 
-        // DELETE POST
         async function deletePost(id) {
             if (!confirm('Hapus post ni?')) return;
-
             const { error } = await supabaseClient.from('posts').delete().eq('id', id);
             if (error) showMessage(error.message, 'error');
             else {
                 showMessage('Post dihapus', 'success');
-                loadPosts();
+                isAdminView? loadAllPosts() : loadPosts();
             }
         }
 
-        // EDIT POST
         async function editPost(id) {
             const post = allPosts.find(p => p.id === id);
             const newTitle = prompt('Judul baru:', post.title);
@@ -185,13 +179,13 @@
             const newContent = prompt('Content baru:', post.content || '');
 
             const { error } = await supabaseClient.from('posts')
-               .update({ title: newTitle, content: newContent, updated_at: new Date() })
-               .eq('id', id);
+              .update({ title: newTitle, content: newContent })
+              .eq('id', id);
 
             if (error) showMessage(error.message, 'error');
             else {
                 showMessage('Post diupdate!', 'success');
-                loadPosts();
+                isAdminView? loadAllPosts() : loadPosts();
             }
         }
     </script>
