@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Pahri v1.5.1</title>
+    <title>Admin Panel - Pahri v1.5.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -30,10 +30,10 @@
             <div class="skeleton skeleton-card"></div>
         </div>
 
-        <!-- PENDING USERS SECTION - PENTING! -->
-        <div class="card" id="pendingSection" style="border: 3px solid var(--warning); display: none;">
+        <!-- PENDING USERS SECTION - AUTO SHOW -->
+        <div class="card" id="pendingSection" style="border: 4px solid var(--warning); display: none;">
             <h3>⏳ Pending Approval <span id="pendingCount" class="badge badge-pending">0</span></h3>
-            <p style="color: var(--text-light); margin-bottom: 20px;">User ni tunggu approval kau</p>
+            <p style="color: var(--text-light); margin-bottom: 20px;">User baru yang tunggu approval kau. Approve/Reject cepat!</p>
             <div id="pendingUsersList"></div>
         </div>
 
@@ -43,7 +43,7 @@
         </div>
 
         <div class="card">
-            <h3>🔍 Search & Filter Users</h3>
+            <h3>🔍 Search & Filter All Users</h3>
             <div class="search-bar">
                 <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau email..." oninput="filterUsers()">
                 <select id="roleFilter" class="filter-select" onchange="filterUsers()">
@@ -54,11 +54,12 @@
                 </select>
                 <select id="statusFilter" class="filter-select" onchange="filterUsers()">
                     <option value="all">Semua Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
+                    <option value="pending">⏳ Pending</option>
+                    <option value="approved">✅ Approved</option>
+                    <option value="rejected">❌ Rejected</option>
                 </select>
                 <button class="btn-export" onclick="exportUsers()">📥 Export CSV</button>
+                <button class="btn-secondary" onclick="loadUsers()">🔄 Refresh</button>
             </div>
 
             <div class="bulk-actions" id="bulkActions">
@@ -79,7 +80,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.5.1
+        <span class="dot"></span>v1.5.2
     </div>
 
     <div id="toastContainer"></div>
@@ -117,24 +118,25 @@
         })();
 
         async function loadStats() {
+            // FIX: Count SEMUA status
             const { count: totalUsers } = await supabaseClient
-              .from('profiles')
-              .select('*', { count: 'exact', head: true });
+             .from('profiles')
+             .select('*', { count: 'exact', head: true });
 
             const { count: pendingUsers } = await supabaseClient
-              .from('profiles')
-              .select('*', { count: 'exact', head: true })
-              .eq('status', 'pending');
+             .from('profiles')
+             .select('*', { count: 'exact', head: true })
+             .eq('status', 'pending');
 
             const { count: adminUsers } = await supabaseClient
-              .from('profiles')
-              .select('*', { count: 'exact', head: true })
-              .eq('role', 'admin');
+             .from('profiles')
+             .select('*', { count: 'exact', head: true })
+             .eq('role', 'admin');
 
             const { count: approvedUsers } = await supabaseClient
-              .from('profiles')
-              .select('*', { count: 'exact', head: true })
-              .eq('status', 'approved');
+             .from('profiles')
+             .select('*', { count: 'exact', head: true })
+             .eq('status', 'approved');
 
             document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
@@ -178,18 +180,23 @@
         }
 
         async function loadUsers() {
+            // FIX: Select SEMUA users termasuk pending
             const { data: users, error } = await supabaseClient
-              .from('profiles')
-              .select('*')
-              .order('created_at', { ascending: false });
+             .from('profiles')
+             .select('*')
+             .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
+                console.error('Load users error:', error);
                 return;
             }
 
             allUsers = users || [];
             pendingUsers = allUsers.filter(u => u.status === 'pending');
+
+            console.log('Total users loaded:', allUsers.length);
+            console.log('Pending users:', pendingUsers.length);
 
             // Show pending section if ada
             if (pendingUsers.length > 0) {
@@ -207,14 +214,20 @@
             const list = document.getElementById('pendingUsersList');
 
             list.innerHTML = pendingUsers.map(user => `
-                <div class="user-card" style="border-color: var(--warning);">
+                <div class="user-card" style="border-color: var(--warning); background: #fffbf0;">
                     <div class="user-info">
                         <strong>${user.full_name || 'No Name'} ⚠️</strong>
                         <small>${user.email}</small>
                         <span class="badge badge-${user.role}">${user.role}</span>
                         <span class="badge badge-pending">PENDING</span>
                         <small style="display: block; margin-top: 5px; color: #999;">
-                            Register: ${new Date(user.created_at).toLocaleDateString('id-ID')}
+                            Register: ${new Date(user.created_at).toLocaleDateString('id-ID', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
                         </small>
                     </div>
                     <div class="user-actions">
@@ -244,6 +257,9 @@
                         <small>${user.email}</small>
                         <span class="badge badge-${user.role}">${user.role}</span>
                         <span class="badge badge-${user.status}">${user.status}</span>
+                        <small style="display: block; margin-top: 3px; color: #999;">
+                            ${new Date(user.created_at).toLocaleDateString('id-ID')}
+                        </small>
                     </div>
                     <div class="user-actions">
                         ${user.status === 'pending'? `
@@ -305,9 +321,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ status: 'approved', approved_at: new Date().toISOString() })
-              .eq('id', userId);
+             .from('profiles')
+             .update({
+                  status: 'approved',
+                  approved_at: new Date().toISOString(),
+                  approved_by: currentAdmin.id
+              })
+             .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -322,9 +342,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ status: 'rejected' })
-              .eq('id', userId);
+             .from('profiles')
+             .update({ status: 'rejected' })
+             .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -337,9 +357,9 @@
 
         async function changeRole(userId, newRole) {
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ role: newRole })
-              .eq('id', userId);
+             .from('profiles')
+             .update({ role: newRole })
+             .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -354,9 +374,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ status: 'approved', approved_at: new Date().toISOString() })
-              .in('id', Array.from(selectedUsers));
+             .from('profiles')
+             .update({
+                  status: 'approved',
+                  approved_at: new Date().toISOString(),
+                  approved_by: currentAdmin.id
+              })
+             .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -373,9 +397,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ status: 'rejected' })
-              .in('id', Array.from(selectedUsers));
+             .from('profiles')
+             .update({ status: 'rejected' })
+             .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -392,9 +416,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-              .from('profiles')
-              .delete()
-              .in('id', Array.from(selectedUsers));
+             .from('profiles')
+             .delete()
+             .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -408,8 +432,8 @@
 
         function exportUsers() {
             const csv = [
-                'Name,Email,Role,Status,Created',
-               ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}"`)
+                'Name,Email,Role,Status,Created,Approved At',
+              ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.approved_at || ''}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
