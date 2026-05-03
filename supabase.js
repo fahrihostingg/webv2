@@ -7,6 +7,21 @@ const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function checkAuth() {
     const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session) return null;
+
+    // Check profile status
+    const { data: profile } = await supabaseClient
+       .from('profiles')
+       .select('status, role')
+       .eq('id', session.user.id)
+       .single();
+
+    if (!profile || profile.status!== 'approved') {
+        await supabaseClient.auth.signOut();
+        return null;
+    }
+
+    session.user.profile = profile;
     return session;
 }
 
@@ -26,6 +41,17 @@ async function requireGuest() {
         return true;
     }
     return false;
+}
+
+async function requireRole(roles) {
+    const user = await requireAuth();
+    if (!user) return null;
+
+    if (!roles.includes(user.profile.role)) {
+        window.location.replace('/dashboard');
+        return null;
+    }
+    return user;
 }
 
 function showMessage(text, type) {
