@@ -13,12 +13,13 @@
         <div class="dashboard-header">
             <div>
                 <h1>Dashboard</h1>
-                <p>Selamat datang, <span id="userName">Loading...</span>! 
+                <p>Selamat datang, <span id="userName">...</span>! 
                    <span class="badge" id="userRole"></span>
                 </p>
             </div>
             <div>
                 <button onclick="window.location.href='/profile'">Profile</button>
+                <button onclick="window.location.href='/admin'" id="adminBtn" style="display:none;margin-right:10px;">Admin</button>
                 <button onclick="logout()">Logout</button>
             </div>
         </div>
@@ -55,46 +56,33 @@
         let currentUser = null;
 
         async function init() {
-            try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) throw new Error('Not logged in');
+            const { ok, profile, redirect } = await checkAuth();
+            if (!ok) return window.location.replace(redirect);
 
-                const { data: profile, error } = await supabaseClient
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .maybeSingle();
-
-                if (error) throw error;
-                if (!profile || profile.status !== 'approved') {
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Not approved');
-                }
-
-                currentUser = profile;
-                document.getElementById('userName').textContent = profile.full_name || 'User';
-                document.getElementById('userRole').textContent = profile.role.toUpperCase();
-                
-                if (profile.role === 'dev' || profile.role === 'admin') {
-                    document.getElementById('adminPanel').style.display = 'block';
-                    loadPending();
-                }
-                loadPosts();
-            } catch (err) {
-                window.location.replace('/login');
+            currentUser = profile;
+            document.getElementById('userName').textContent = profile.full_name || 'User';
+            document.getElementById('userRole').textContent = profile.role.toUpperCase();
+            
+            if (profile.role === 'dev' || profile.role === 'admin') {
+                document.getElementById('adminBtn').style.display = 'inline-block';
+                document.getElementById('adminPanel').style.display = 'block';
+                loadPending();
             }
+            loadPosts();
         }
 
         async function loadPending() {
             const { data } = await supabaseClient.from('profiles').select('id, full_name').eq('status', 'pending');
-            document.getElementById('pendingList').innerHTML = !data?.length ? '<p>Tiada pending</p>' : 
+            const list = document.getElementById('pendingList');
+            if (!list) return;
+            list.innerHTML = !data?.length ? '<p>Tiada pending</p>' : 
                 data.map(u => `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee">
-                    <span>${u.full_name || 'No Name'}</span>
-                    <button onclick="approveUser('${u.id}')">Approve</button>
+                    <span>${u.full_name}</span>
+                    <button onclick="approve('${u.id}')">Approve</button>
                 </div>`).join('');
         }
 
-        async function approveUser(id) {
+        async function approve(id) {
             await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', id);
             showMessage('Approved!', 'success');
             loadPending();
