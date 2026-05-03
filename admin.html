@@ -70,42 +70,25 @@
         let currentAdmin = null;
 
         async function init() {
-            try {
-                const { data: { user } } = await supabaseClient.auth.getUser();
-                if (!user) throw new Error('Not logged in');
-
-                const { data: profile, error } = await supabaseClient
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', user.id)
-                    .maybeSingle();
-
-                if (error) throw error;
-                if (!profile || profile.status !== 'approved') throw new Error('Not approved');
-                if (profile.role !== 'dev' && profile.role !== 'admin') throw new Error('Not admin');
-
-                currentAdmin = profile;
-                document.getElementById('adminName').textContent = profile.full_name || 'Admin';
-                document.getElementById('adminRole').textContent = profile.role.toUpperCase();
-                
-                await Promise.all([loadStats(), loadPendingUsers(), loadAllUsers()]);
-            } catch (err) {
-                showMessage('Access denied: ' + err.message, 'error');
-                setTimeout(() => window.location.replace('/login'), 2000);
+            const { ok, profile, redirect, msg } = await checkAuth('admin');
+            if (!ok) {
+                if (msg) showMessage(msg, 'error');
+                return setTimeout(() => window.location.replace(redirect), 1500);
             }
+
+            currentAdmin = profile;
+            document.getElementById('adminName').textContent = profile.full_name || 'Admin';
+            document.getElementById('adminRole').textContent = profile.role.toUpperCase();
+            
+            await Promise.all([loadStats(), loadPendingUsers(), loadAllUsers()]);
         }
 
         async function loadStats() {
-            const { data, error } = await supabaseClient.from('profiles').select('status');
-            if (error) return console.error(error);
-            
-            const total = data.length;
-            const pending = data.filter(u => u.status === 'pending').length;
-            const approved = data.filter(u => u.status === 'approved').length;
-            
-            document.getElementById('totalUsers').textContent = total;
-            document.getElementById('pendingUsers').textContent = pending;
-            document.getElementById('approvedUsers').textContent = approved;
+            const { data } = await supabaseClient.from('profiles').select('status');
+            if (!data) return;
+            document.getElementById('totalUsers').textContent = data.length;
+            document.getElementById('pendingUsers').textContent = data.filter(u => u.status === 'pending').length;
+            document.getElementById('approvedUsers').textContent = data.filter(u => u.status === 'approved').length;
         }
 
         async function loadPendingUsers() {
@@ -190,6 +173,10 @@
         }
 
         init();
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) init();
+        });
     </script>
 </body>
 </html>
