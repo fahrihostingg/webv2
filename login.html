@@ -16,13 +16,13 @@
             <form id="loginForm">
                 <div class="input-group">
                     <label>Email</label>
-                    <input type="email" id="email" placeholder="nama@email.com" required>
+                    <input type="email" id="email" required>
                 </div>
                 <div class="input-group">
                     <label>Password</label>
-                    <input type="password" id="password" placeholder="Password anda" required>
+                    <input type="password" id="password" required>
                 </div>
-                <button type="submit" id="loginBtn">Login</button>
+                <button type="submit" id="btn">Login</button>
             </form>
             <div class="link-text">
                 Belum ada akaun? <a href="/signup">Daftar di sini</a>
@@ -31,21 +31,16 @@
     </div>
 
     <script>
-        // Kalau dah login + approved, terus ke dashboard
-        (async () => {
-            const profile = await getProfile();
-            if (profile?.status === 'approved') window.location.href = '/dashboard';
-        })();
-
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('loginBtn');
+            const btn = document.getElementById('btn');
             btn.disabled = true;
-            btn.textContent = 'Loading...';
+            btn.textContent = 'Login...';
 
-            const { error } = await supabaseClient.auth.signInWithPassword({ 
-                email: document.getElementById('email').value, 
-                password: document.getElementById('password').value 
+            // 1. Login terus, takyah check session
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email.value,
+                password: password.value
             });
 
             if (error) {
@@ -55,16 +50,21 @@
                 return;
             }
 
-            const profile = await getProfile();
-            if (profile?.status === 'approved') {
-                window.location.href = '/dashboard';
-            } else {
-                showMessage('Akaun masih pending approval.', 'error');
-                await supabaseClient.auth.signOut();
-            }
+            // 2. Check status sekali je
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('status')
+                .eq('id', data.user.id)
+                .maybeSingle();
 
-            btn.disabled = false;
-            btn.textContent = 'Login';
+            if (profile?.status === 'approved') {
+                window.location.replace('/dashboard'); // replace lagi laju dari href
+            } else {
+                await supabaseClient.auth.signOut();
+                showMessage('Akaun masih pending approval', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Login';
+            }
         });
     </script>
 </body>
