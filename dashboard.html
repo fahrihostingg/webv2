@@ -13,7 +13,7 @@
         <div class="dashboard-header">
             <div>
                 <h1>AmmarBN Platform</h1>
-                <p>Selamat datang, <span id="userName">...</span>! 
+                <p>Selamat datang, <span id="userName">...</span>!
                    <span class="badge" id="userRole"></span>
                 </p>
             </div>
@@ -50,7 +50,7 @@
                 <li><strong>Bulk Actions:</strong> Select ramai, approve/reject sekali jalan</li>
                 <li><strong>Export CSV:</strong> Download data ke Excel</li>
                 <li><strong>Activity Log:</strong> Track semua action admin</li>
-                <li><strong>Toast Notifications:</strong> Notif cantik slide dari kanan</li>
+                <li><strong>Toast Notifications:</strong> Notif slide cantik dari kanan</li>
                 <li><strong>Skeleton Loading:</strong> Loading animation smooth</li>
                 <li><strong>Stats Animation:</strong> Counter naik dengan animation</li>
                 <li><strong>Responsive:</strong> Mobile friendly 100%</li>
@@ -71,7 +71,6 @@
     <script>
         const APP_VERSION = '1.2.1';
 
-        // Dark Mode
         function toggleTheme() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
@@ -91,7 +90,7 @@
 
             document.getElementById('userName').textContent = profile.full_name || profile.email;
             document.getElementById('userRole').textContent = profile.role.toUpperCase();
-            
+
             if (['admin', 'dev'].includes(profile.role)) {
                 document.getElementById('adminBtn').style.display = 'inline-block';
             }
@@ -115,10 +114,10 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-            
+
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-            
+
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
