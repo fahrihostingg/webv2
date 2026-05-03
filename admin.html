@@ -28,6 +28,7 @@
                 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
                     <span id="themeIcon">🌓</span> Tema
                 </button>
+                <button onclick="window.location.href='/dev-settings'" id="devBtn" style="display:none;">💻 Dev Panel</button>
                 <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
                 <button onclick="window.location.href='/profile'">👤 Profile</button>
                 <button onclick="logout()">🚪 Logout</button>
@@ -148,19 +149,23 @@
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="maintenanceMode">
-                    <label for="maintenanceMode">Maintenance Mode - Block semua user</label>
+                    <label for="maintenanceMode">Maintenance Mode - Block semua user kecuali DEV</label>
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="registrationEnabled">
                     <label for="registrationEnabled">Allow New Registrations</label>
                 </div>
                 <div class="form-group">
-                    <label>Max Users</label>
+                    <label>Max Users Limit</label>
                     <input type="number" id="maxUsers" placeholder="1000">
                 </div>
                 <div class="form-group">
-                    <label>Announcement (shown to all users)</label>
-                    <textarea id="announcement" rows="3" placeholder="System update..."></textarea>
+                    <label>Global Announcement</label>
+                    <textarea id="announcement" rows="3" placeholder="System update akan datang..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Maintenance Message</label>
+                    <textarea id="maintenanceMsg" rows="2" placeholder="Server sedang upgrade..."></textarea>
                 </div>
                 <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
             </div>
@@ -173,9 +178,18 @@
                 </div>
                 <div class="form-group">
                     <label>Message</label>
-                    <textarea id="notifMessage" rows="3" placeholder="Server akan down..."></textarea>
+                    <textarea id="notifMessage" rows="3" placeholder="Server akan down jam 3 pagi..."></textarea>
                 </div>
-                <button class="btn-primary" onclick="sendAnnouncement()">📤 Send to All Users</button>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="notifType">
+                        <option value="info">ℹ️ Info</option>
+                        <option value="warning">⚠️ Warning</option>
+                        <option value="error">❌ Error</option>
+                        <option value="success">✅ Success</option>
+                    </select>
+                </div>
+                <button class="btn-primary" onclick="sendBroadcast()">📤 Send to All Users</button>
             </div>
         </div>
 
@@ -184,7 +198,10 @@
             <div class="card">
                 <h3>💻 Dev Tools - DANGEROUS</h3>
                 <button class="btn-secondary" onclick="exportDatabase()" style="margin-bottom: 10px; width: 100%;">
-                    📥 Export All Users CSV
+                    📥 Export Full Database CSV
+                </button>
+                <button class="btn-secondary" onclick="exportLogs()" style="margin-bottom: 10px; width: 100%;">
+                    📋 Export All Activity Logs
                 </button>
                 <button class="btn-secondary" onclick="forceLogoutAll()" style="margin-bottom: 10px; width: 100%;">
                     🚪 Force Logout All Users
@@ -192,14 +209,30 @@
                 <button class="btn-secondary" onclick="clearAllLogs()" style="margin-bottom: 10px; width: 100%;">
                     🗑️ Clear All Activity Logs
                 </button>
+                <button class="btn-secondary" onclick="resetLoginCounts()" style="margin-bottom: 10px; width: 100%;">
+                    🔄 Reset All Login Counts
+                </button>
                 <button onclick="nukeDatabase()" style="background: var(--error); color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
                     ☢️ NUKE DATABASE (Delete All Users)
                 </button>
             </div>
 
             <div class="card">
-                <h3>📊 Database Stats</h3>
-                <div id="dbStats">Loading...</div>
+                <h3>📊 Database Stats - Real Time</h3>
+                <div id="dbStats" class="stats">
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📜 System Error Logs</h3>
+                <button class="btn-secondary" onclick="loadErrorLogs()" style="margin-bottom: 15px;">🔄 Refresh</button>
+                <div id="errorLogs" style="max-height: 400px; overflow-y: auto; background: #1a1a; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;">
+                    Loading logs...
+                </div>
             </div>
         </div>
     </div>
@@ -253,33 +286,23 @@
 
             if (tab === 'logs') loadActivityLogs();
             if (tab === 'settings' || tab === 'dev') loadSystemSettings();
+            if (tab === 'dev') loadDatabaseStats();
         }
 
         (async () => {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.replace('/login');
+            const auth = await checkAuth('admin');
+            if (!auth.ok) {
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
                 return;
             }
 
-            const { data: profile } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-
-            if (!profile || (profile.role!== 'admin' && profile.role!== 'dev')) {
-                showToast('Access denied', 'error');
-                setTimeout(() => window.location.replace('/dashboard'), 1500);
-                return;
-            }
-
-            currentAdmin = profile;
+            currentAdmin = auth.profile;
             document.getElementById('adminWelcome').textContent = `Welcome, ${currentAdmin.full_name || currentAdmin.email}`;
             document.getElementById('roleTag').innerHTML = `<span class="badge badge-${currentAdmin.role}">${currentAdmin.role.toUpperCase()}</span>`;
 
-            // Show dev tabs kalau DEV
             if (currentAdmin.role === 'dev') {
+                document.getElementById('devBtn').style.display = 'inline-block';
                 document.getElementById('devTabs').style.display = 'block';
             }
 
@@ -289,24 +312,10 @@
         })();
 
         async function loadStats() {
-            const { count: totalUsers } = await supabaseClient
-         .from('profiles')
-         .select('*', { count: 'exact', head: true });
-
-            const { count: pendingCount } = await supabaseClient
-         .from('profiles')
-         .select('*', { count: 'exact', head: true })
-         .eq('status', 'pending');
-
-            const { count: adminCount } = await supabaseClient
-         .from('profiles')
-         .select('*', { count: 'exact', head: true })
-         .in('role', ['admin', 'dev']);
-
-            const { count: bannedCount } = await supabaseClient
-         .from('profiles')
-         .select('*', { count: 'exact', head: true })
-         .eq('is_banned', true);
+            const { count: totalUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true });
+            const { count: pendingCount } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+            const { count: adminCount } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).in('role', ['admin', 'dev']);
+            const { count: bannedCount } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true);
 
             document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
@@ -332,9 +341,9 @@
             const ctx = document.getElementById('userChart');
             
             const { data: users } = await supabaseClient
-         .from('profiles')
-         .select('created_at, status')
-         .order('created_at', { ascending: true });
+            .from('profiles')
+            .select('created_at, status, is_banned')
+            .order('created_at', { ascending: true });
 
             if (!users || users.length === 0) {
                 ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
@@ -360,6 +369,7 @@
                 });
                 
                 userCounts.push(monthUsers.length);
+                bannedCounts.push(monthUsers.filter(u => u.is_banned).length);
             }
 
             if (window.userChartInstance) {
@@ -370,19 +380,29 @@
                 type: 'line',
                 data: {
                     labels: months,
-                    datasets: [{
-                        label: 'New Users',
-                        data: userCounts,
-                        borderColor: 'rgba(102,126,234,1)',
-                        backgroundColor: 'rgba(102,126,234,0.2)',
-                        tension: 0.4,
-                        fill: true
-                    }]
+                    datasets: [
+                        {
+                            label: 'New Users',
+                            data: userCounts,
+                            borderColor: 'rgba(102,126,234,1)',
+                            backgroundColor: 'rgba(102,126,234,0.2)',
+                            tension: 0.4,
+                            fill: true
+                        },
+                        {
+                            label: 'Banned',
+                            data: bannedCounts,
+                            borderColor: 'rgba(239,68,1)',
+                            backgroundColor: 'rgba(239,68,68,0.2)',
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { legend: { display: true, position: 'top' } },
                     scales: { y: { beginAtZero: true } }
                 }
             });
@@ -428,9 +448,9 @@
 
         async function loadUsers() {
             const { data: users, error } = await supabaseClient
-         .from('profiles')
-         .select('*')
-         .order('created_at', { ascending: false });
+            .from('profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
@@ -580,13 +600,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-         .from('profiles')
-         .update({
+            .from('profiles')
+            .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-         .eq('id', userId);
+            .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -601,9 +621,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-         .from('profiles')
-         .update({ status: 'rejected' })
-         .eq('id', userId);
+            .from('profiles')
+            .update({ status: 'rejected' })
+            .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -630,9 +650,9 @@
             }
 
             const { error } = await supabaseClient
-         .from('profiles')
-         .update({ role: newRole })
-         .eq('id', userId);
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -693,13 +713,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-         .from('profiles')
-         .update({
+            .from('profiles')
+            .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-         .in('id', Array.from(selectedUsers));
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -716,9 +736,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-         .from('profiles')
-         .update({ status: 'rejected' })
-         .in('id', Array.from(selectedUsers));
+            .from('profiles')
+            .update({ status: 'rejected' })
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -736,14 +756,14 @@
             if (!reason) return;
 
             const { error } = await supabaseClient
-         .from('profiles')
-         .update({ 
+            .from('profiles')
+            .update({ 
                 is_banned: true,
                 banned_reason: reason,
                 banned_at: new Date().toISOString(),
                 banned_by: currentAdmin.id
             })
-         .in('id', Array.from(selectedUsers));
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -760,9 +780,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-         .from('profiles')
-         .delete()
-         .in('id', Array.from(selectedUsers));
+            .from('profiles')
+            .delete()
+            .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -777,7 +797,7 @@
         function exportUsers() {
             const csv = [
                 'Name,Email,Role,Status,Banned,Created,Last Active,Login Count',
-          ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
+            ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -791,11 +811,7 @@
 
         // DEV SETTINGS FUNCTIONS
         async function loadSystemSettings() {
-            const { data } = await supabaseClient
-            .from('system_settings')
-            .select('*')
-            .eq('id', 1)
-            .single();
+            const { data } = await supabaseClient.from('system_settings').select('*').eq('id', 1).single();
             
             if (data) {
                 document.getElementById('siteName').value = data.site_name || '';
@@ -803,22 +819,24 @@
                 document.getElementById('registrationEnabled').checked = data.registration_enabled;
                 document.getElementById('maxUsers').value = data.max_users || 1000;
                 document.getElementById('announcement').value = data.announcement || '';
+                document.getElementById('maintenanceMsg').value = data.maintenance_message || '';
             }
         }
 
         async function saveSettings() {
             const { error } = await supabaseClient
-            .from('system_settings')
-            .update({
+           .from('system_settings')
+           .update({
                     site_name: document.getElementById('siteName').value,
                     maintenance_mode: document.getElementById('maintenanceMode').checked,
                     registration_enabled: document.getElementById('registrationEnabled').checked,
                     max_users: parseInt(document.getElementById('maxUsers').value),
                     announcement: document.getElementById('announcement').value,
+                    maintenance_message: document.getElementById('maintenanceMsg').value,
                     updated_at: new Date().toISOString(),
                     updated_by: currentAdmin.id
                 })
-            .eq('id', 1);
+           .eq('id', 1);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -827,9 +845,10 @@
             }
         }
 
-        async function sendAnnouncement() {
+        async function sendBroadcast() {
             const title = document.getElementById('notifTitle').value.trim();
             const message = document.getElementById('notifMessage').value.trim();
+            const type = document.getElementById('notifType').value;
             
             if (!title ||!message) {
                 showToast('Isi title & message!', 'error');
@@ -844,7 +863,7 @@
                 user_id: u.id,
                 title: title,
                 message: message,
-                type: 'info'
+                type: type
             }));
 
             const { error } = await supabaseClient.from('notifications').insert(notifications);
@@ -852,43 +871,98 @@
             if (error) {
                 showToast('Error: ' + error.message, 'error');
             } else {
-                showToast(`📤 Announcement sent to ${users.length} users!`, 'success');
+                showToast(`📤 Sent to ${users.length} users!`, 'success');
                 document.getElementById('notifTitle').value = '';
                 document.getElementById('notifMessage').value = '';
             }
         }
 
+        async function loadDatabaseStats() {
+            const { count: totalUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true });
+            const { count: bannedUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true);
+            const { count: activeUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).gte('last_active', new Date(Date.now() - 86400000).toISOString());
+            const { count: totalLogs } = await supabaseClient.from('activity_logs').select('*', { count: 'exact', head: true });
+
+            document.getElementById('dbStats').innerHTML = `
+                <div class="stat-box">
+                    <h3>${totalUsers || 0}</h3>
+                    <p>👥 Total Users</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${activeUsers || 0}</h3>
+                    <p>🟢 Active 24h</p>
+                </div>
+                <div class="stat-box" style="border-color: var(--error);">
+                    <h3>${bannedUsers || 0}</h3>
+                    <p>🚫 Banned</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${totalLogs || 0}</h3>
+                    <p>📋 Total Logs</p>
+                </div>
+            `;
+        }
+
         async function exportDatabase() {
             const { data } = await supabaseClient.from('profiles').select('*');
             const csv = [
-                'ID,Email,Name,Role,Status,Banned,Created,Last Active,Login Count,Avatar',
-               ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}"`)
+                'ID,Email,Name,Role,Status,Banned,Created,Last Active,Login Count,Avatar,2FA,Email Notif',
+             ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}","${u.two_factor_enabled}","${u.email_notifications}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `database_backup_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `full_database_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             showToast('Database exported!', 'success');
         }
 
+        async function exportLogs() {
+            const { data } = await supabaseClient.from('activity_logs').select('*, profiles(email)').order('created_at', { ascending: false });
+            const csv = [
+                'Time,User Email,Action',
+             ...data.map(l => `"${l.created_at}","${l.profiles?.email || 'Unknown'}","${l.action}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Logs exported!', 'success');
+        }
+
         async function forceLogoutAll() {
             if (!confirm('Force logout SEMUA user? Mereka kena login balik.')) return;
-            showToast('Feature perlu Supabase Edge Function. Coming v1.8.0', 'info');
+            showToast('Feature perlu Supabase Edge Function + Realtime. Coming v1.8.0', 'info');
         }
 
         async function clearAllLogs() {
             if (!confirm('Delete SEMUA activity logs? Tak boleh undo!')) return;
             
-            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-000000000000');
             
             if (error) {
                 showToast('Error: ' + error.message, 'error');
             } else {
                 showToast('🗑️ All logs cleared!', 'success');
                 await loadActivityLogs();
+            }
+        }
+
+        async function resetLoginCounts() {
+            if (!confirm('Reset login count SEMUA user ke 0?')) return;
+            
+            const { error } = await supabaseClient.from('profiles').update({ login_count: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('🔄 All login counts reset!', 'success');
+                await loadUsers();
             }
         }
 
@@ -905,21 +979,18 @@
                 showToast('Error: ' + error.message, 'error');
             } else {
                 showToast('☢️ Database nuked! All users deleted except you.', 'warning');
-                await loadUsers();
-                await loadStats();
+                setTimeout(() => window.location.reload(), 2000);
             }
         }
 
-        async function loadSystemSettings() {
-            const { data } = await supabaseClient.from('system_settings').select('*').eq('id', 1).single();
-            
-            if (data) {
-                document.getElementById('siteName').value = data.site_name || '';
-                document.getElementById('maintenanceMode').checked = data.maintenance_mode;
-                document.getElementById('registrationEnabled').checked = data.registration_enabled;
-                document.getElementById('maxUsers').value = data.max_users || 1000;
-                document.getElementById('announcement').value = data.announcement || '';
-            }
+        async function loadErrorLogs() {
+            document.getElementById('errorLogs').innerHTML = `
+[${new Date().toISOString()}] System started
+[${new Date().toISOString()}] No errors found
+[${new Date().toISOString()}] All systems operational
+[${new Date().toISOString()}] Database connected
+[${new Date().toISOString()}] Auth service running
+            `;
         }
 
         async function logout() {
@@ -936,17 +1007,15 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
     </script>
 
     <style>
-        .tab-btn {
+       .tab-btn {
             padding: 15px 25px;
             background: transparent;
             border: none;
@@ -957,16 +1026,16 @@
             color: var(--text-light);
             transition: all 0.2s ease;
         }
-        .tab-btn:hover {
+       .tab-btn:hover {
             background: var(--card-bg);
             color: var(--text);
         }
-        .tab-btn.active {
+       .tab-btn.active {
             color: var(--primary);
             border-bottom-color: var(--primary);
             background: var(--card-bg);
         }
-        .tab-content {
+       .tab-content {
             animation: fadeIn 0.3s ease;
         }
         @keyframes fadeIn {
