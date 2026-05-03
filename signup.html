@@ -16,15 +16,15 @@
             <form id="signupForm">
                 <div class="input-group">
                     <label>Nama</label>
-                    <input type="text" id="name" required>
+                    <input type="text" id="fullName" required>
                 </div>
                 <div class="input-group">
                     <label>Email</label>
-                    <input type="email" id="email" required>
+                    <input type="email" id="email" autocomplete="email" required>
                 </div>
                 <div class="input-group">
                     <label>Password</label>
-                    <input type="password" id="password" minlength="6" required>
+                    <input type="password" id="password" autocomplete="new-password" required minlength="6">
                 </div>
                 <button type="submit" id="signupBtn">Daftar</button>
             </form>
@@ -35,24 +35,38 @@
     </div>
 
     <script>
+        (async () => {
+            const { ok } = await checkAuth();
+            if (ok) window.location.replace('/dashboard');
+        })();
+
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('signupBtn');
             btn.disabled = true;
-            btn.textContent = 'Creating...';
+            btn.textContent = 'Daftar...';
 
             try {
                 const { data, error } = await supabaseClient.auth.signUp({
                     email: document.getElementById('email').value,
                     password: document.getElementById('password').value,
-                    options: { data: { full_name: document.getElementById('name').value } }
+                    options: {
+                        data: {
+                            full_name: document.getElementById('fullName').value
+                        }
+                    }
                 });
-
+                
                 if (error) throw error;
-
-                showMessage('Daftar berjaya! Tunggu admin approve.', 'success');
-                setTimeout(() => window.location.replace('/login'), 2000);
+                
+                if (data.user) {
+                    showMessage('Daftar berjaya! Tunggu admin approve akaun anda.', 'success');
+                    setTimeout(() => window.location.replace('/login'), 3000);
+                } else {
+                    throw new Error('Signup gagal. Sila cuba lagi.');
+                }
             } catch (err) {
+                console.error('Signup error:', err);
                 showMessage(err.message, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Daftar';
