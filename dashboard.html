@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - AmmarBN Platform v1.1</title>
+    <title>Dashboard - AmmarBN Platform v1.2.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -18,8 +18,9 @@
                 </p>
             </div>
             <div>
-                <button class="changelog-btn" onclick="showChangelog()">Changelog</button>
-                <button id="adminBtn" style="display:none;" onclick="window.location.href='/admin'">Admin Panel</button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+                <button class="changelog-btn" onclick="showChangelog()">📋 Changelog</button>
+                <button id="adminBtn" style="display:none;" onclick="window.location.href='/admin'">⚡ Admin</button>
                 <button onclick="logout()">Logout</button>
             </div>
         </div>
@@ -32,43 +33,59 @@
             <div id="pendingNotice" style="display:none;" class="message error">
                 Akaun anda masih pending approval. Tunggu admin approve.
             </div>
-            <button class="btn-primary" onclick="showMessage('Feature coming soon!', 'success')">Mula Projek</button>
+            <button class="btn-primary" onclick="showToast('Feature coming soon!', 'info')">🚀 Mula Projek</button>
         </div>
     </div>
 
-    <!-- Version Badge -->
-    <div class="version-badge">
-        <span class="dot"></span>v1.1.0
+    <div class="version-badge" onclick="showChangelog()">
+        <span class="dot"></span>v1.2.1 Pro
     </div>
 
-    <!-- Changelog Modal -->
     <div id="changelogModal" class="changelog-modal" onclick="hideChangelog()">
         <div class="changelog-content" onclick="event.stopPropagation()">
-            <h3>🚀 Changelog v1.1.0</h3>
+            <h3>🚀 Changelog v1.2.1 Pro</h3>
             <ul>
-                <li><strong>Auto Delete:</strong> Dev reject user → auto delete dari database</li>
-                <li><strong>UI Modern:</strong> Gradient purple, glass effect, smooth animations</li>
-                <li><strong>RLS Fix:</strong> Admin panel guna RPC function, bypass RLS</li>
-                <li><strong>Version Badge:</strong> Tunjuk version kat bottom right</li>
-                <li><strong>Security:</strong> Check role + status sebelum bagi akses</li>
+                <li><strong>Dark Mode:</strong> Toggle theme gelap/terang, auto save</li>
+                <li><strong>Search & Filter:</strong> Cari user real-time</li>
+                <li><strong>Bulk Actions:</strong> Select ramai, approve/reject sekali jalan</li>
+                <li><strong>Export CSV:</strong> Download data ke Excel</li>
+                <li><strong>Activity Log:</strong> Track semua action admin</li>
+                <li><strong>Toast Notifications:</strong> Notif cantik slide dari kanan</li>
+                <li><strong>Skeleton Loading:</strong> Loading animation smooth</li>
+                <li><strong>Stats Animation:</strong> Counter naik dengan animation</li>
+                <li><strong>Responsive:</strong> Mobile friendly 100%</li>
             </ul>
-            <h4>🔜 Coming Soon v1.2</h4>
+            <h4>🔜 v1.3.0 Coming</h4>
             <ul>
-                <li>Email notification bila approve/reject</li>
-                <li>User activity log</li>
-                <li>Bulk actions</li>
+                <li>Email notification</li>
+                <li>User analytics chart</li>
+                <li>Role permissions matrix</li>
+                <li>2FA authentication</li>
             </ul>
             <button class="btn-primary" onclick="hideChangelog()">Tutup</button>
         </div>
     </div>
 
+    <div id="toastContainer"></div>
+
     <script>
-        const APP_VERSION = '1.1.0';
+        const APP_VERSION = '1.2.1';
+
+        // Dark Mode
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            showToast('Theme changed!', 'info');
+        }
+
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
 
         async function initDashboard() {
             const { ok, profile, redirect, msg } = await checkAuth();
             if (!ok) {
-                if (msg) showMessage(msg, 'error');
+                if (msg) showToast(msg, 'error');
                 return setTimeout(() => window.location.replace(redirect), 1500);
             }
 
@@ -92,6 +109,18 @@
 
         function hideChangelog() {
             document.getElementById('changelogModal').style.display = 'none';
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
         async function logout() {
