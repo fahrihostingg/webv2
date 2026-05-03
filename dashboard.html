@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Supabase Auth</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <div class="nav">
+                <button class="secondary" onclick="window.location.href='dashboard.html'">Home</button>
+                <button class="secondary" onclick="window.location.href='profile.html'">Profile</button>
+                <button class="secondary admin-only" id="adminBtn" style="display:none">Admin</button>
+            </div>
+
+            <div id="message" class="message"></div>
+
+            <div style="text-align: center;">
+                <div class="avatar" id="userAvatar">U</div>
+                <h2 id="welcomeText">Loading...</h2>
+                <div id="roleBadge" class="badge user">USER</div>
+                <p class="user-email" id="userEmail"></p>
+                <button class="danger" onclick="signOut()">Keluar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        (async () => {
+            currentUser = await requireAuth();
+            if (!currentUser) return;
+
+            const name = currentUser.user_metadata?.full_name || currentUser.email.split('@')[0];
+            const role = currentUser.user_metadata?.role || 'user';
+
+            document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+            document.getElementById('welcomeText').textContent = `Halo, ${name}!`;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('roleBadge').textContent = role.toUpperCase();
+            document.getElementById('roleBadge').className = 'badge ' + role;
+
+            if (role === 'admin') {
+                document.getElementById('adminBtn').style.display = 'block';
+                document.getElementById('adminBtn').onclick = () => showMessage('Fitur admin belum dibuat', 'success');
+            }
+        })();
+    </script>
+</body>
+</html>
