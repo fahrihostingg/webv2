@@ -7,48 +7,56 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
+    <style>
+        .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; background: #667eea; color: white; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card-link { 
+            padding: 30px; background: #fff; border-radius: 12px; 
+            border: 1px solid #e0e0e0; text-align: center; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .card-link:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .card-link h3 { margin: 0 0 10px 0; color: #333; }
+        .card-link p { margin: 0; color: #666; font-size: 14px; }
+    </style>
 </head>
 <body>
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>Dashboard</h1>
+                <h1>Control Panel</h1>
                 <p>Selamat datang, <span id="userName">...</span>! 
                    <span class="badge" id="userRole"></span>
                 </p>
             </div>
             <div>
                 <button onclick="window.location.href='/profile'">Profile</button>
-                <button onclick="window.location.href='/admin'" id="adminBtn" style="display:none;margin-right:10px;">Admin</button>
                 <button onclick="logout()">Logout</button>
             </div>
         </div>
 
         <div id="message" class="message"></div>
 
-        <div id="adminPanel" class="card" style="display:none;">
-            <h3>Panel Admin - Approve Pengguna</h3>
-            <div id="pendingList"></div>
-        </div>
+        <div class="grid">
+            <div class="card-link" onclick="window.location.href='/profile'">
+                <h3>👤 Profile</h3>
+                <p>Urus maklumat akaun anda</p>
+            </div>
+            
+            <div class="card-link" id="adminCard" style="display:none;" onclick="window.location.href='/admin'">
+                <h3>⚙️ Admin Panel</h3>
+                <p>Urus users & sistem</p>
+            </div>
 
-        <div class="card">
-            <h3>Buat Post Baru</h3>
-            <form id="postForm">
-                <div class="input-group">
-                    <label>Title</label>
-                    <input type="text" id="postTitle" required>
-                </div>
-                <div class="input-group">
-                    <label>Content</label>
-                    <textarea id="postContent" required></textarea>
-                </div>
-                <button type="submit">Post</button>
-            </form>
-        </div>
+            <div class="card-link" onclick="showMessage('Coming soon', 'info')">
+                <h3>📊 Statistics</h3>
+                <p>Lihat statistik sistem</p>
+            </div>
 
-        <div class="card">
-            <h3>Semua Posts</h3>
-            <div id="postsList">Loading...</div>
+            <div class="card-link" onclick="showMessage('Coming soon', 'info')">
+                <h3>🔧 Settings</h3>
+                <p>Konfigurasi sistem</p>
+            </div>
         </div>
     </div>
 
@@ -63,48 +71,11 @@
             document.getElementById('userName').textContent = profile.full_name || 'User';
             document.getElementById('userRole').textContent = profile.role.toUpperCase();
             
+            // Show admin card kalau dev/admin
             if (profile.role === 'dev' || profile.role === 'admin') {
-                document.getElementById('adminBtn').style.display = 'inline-block';
-                document.getElementById('adminPanel').style.display = 'block';
-                loadPending();
+                document.getElementById('adminCard').style.display = 'block';
             }
-            loadPosts();
         }
-
-        async function loadPending() {
-            const { data } = await supabaseClient.from('profiles').select('id, full_name').eq('status', 'pending');
-            const list = document.getElementById('pendingList');
-            if (!list) return;
-            list.innerHTML = !data?.length ? '<p>Tiada pending</p>' : 
-                data.map(u => `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee">
-                    <span>${u.full_name}</span>
-                    <button onclick="approve('${u.id}')">Approve</button>
-                </div>`).join('');
-        }
-
-        async function approve(id) {
-            await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', id);
-            showMessage('Approved!', 'success');
-            loadPending();
-        }
-
-        async function loadPosts() {
-            const { data } = await supabaseClient.from('posts').select('*, profiles(full_name)').order('created_at', { ascending: false });
-            document.getElementById('postsList').innerHTML = !data?.length ? '<p>Tiada post</p>' : 
-                data.map(p => `<div class="post-item"><div class="post-title">${p.title}</div><div class="post-content">${p.content}</div><div class="post-meta">Oleh: ${p.profiles?.full_name || 'Unknown'}</div></div>`).join('');
-        }
-
-        document.getElementById('postForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await supabaseClient.from('posts').insert([{ 
-                title: document.getElementById('postTitle').value, 
-                content: document.getElementById('postContent').value, 
-                user_id: currentUser.id 
-            }]);
-            showMessage('Posted!', 'success');
-            e.target.reset();
-            loadPosts();
-        });
 
         async function logout() {
             await supabaseClient.auth.signOut();
