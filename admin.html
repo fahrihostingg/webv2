@@ -38,16 +38,16 @@
         <!-- TAB NAVIGATION - DEV ONLY -->
         <div class="card" id="devTabs" style="display:none; padding: 0; overflow: hidden;">
             <div style="display: flex; background: var(--bg); border-bottom: 2px solid var(--border);">
-                <button class="tab-btn active" onclick="switchTab('users')" id="tabUsers">
+                <button class="tab-btn active" onclick="switchTab('users', this)" id="tabUsers">
                     👥 Users
                 </button>
-                <button class="tab-btn" onclick="switchTab('logs')">
+                <button class="tab-btn" onclick="switchTab('logs', this)">
                     📋 Logs
                 </button>
-                <button class="tab-btn" onclick="switchTab('settings')">
+                <button class="tab-btn" onclick="switchTab('settings', this)">
                     ⚙️ System
                 </button>
-                <button class="tab-btn" onclick="switchTab('dev')">
+                <button class="tab-btn" onclick="switchTab('dev', this)">
                     💻 Dev Tools
                 </button>
             </div>
@@ -119,7 +119,7 @@
         <!-- TAB 2: LOGS - Admin + Dev -->
         <div id="tabContent-logs" class="tab-content" style="display:none;">
             <div class="card">
-                <h3>📋 Activity Logs - Real Time 
+                <h3>📋 Activity Logs - Real Time
                     <button class="btn-secondary" onclick="loadActivityLogs()" style="float:right;">🔄 Refresh</button>
                 </h3>
                 <div style="max-height: 600px; overflow-y: auto;">
@@ -230,7 +230,7 @@
             <div class="card">
                 <h3>📜 System Error Logs</h3>
                 <button class="btn-secondary" onclick="loadErrorLogs()" style="margin-bottom: 15px;">🔄 Refresh</button>
-                <div id="errorLogs" style="max-height: 400px; overflow-y: auto; background: #1a1a; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;">
+                <div id="errorLogs" style="max-height: 400px; overflow-y: auto; background: #1a1a1a; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;">
                     Loading logs...
                 </div>
             </div>
@@ -257,7 +257,7 @@
         function applyTheme() {
             const theme = localStorage.getItem('theme');
             const isDark = theme === 'dark';
-            
+
             if (isDark) {
                 document.documentElement.classList.add('dark-mode');
                 document.body.classList.add('dark-mode');
@@ -277,12 +277,12 @@
             showToast('Tema ditukar!', 'success');
         }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
-            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-            
+        function switchTab(tab, el) {
+            document.querySelectorAll('.tab-content').forEach(e => e.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+
             document.getElementById('tabContent-' + tab).style.display = 'block';
-            event.target.classList.add('active');
+            el.classList.add('active');
 
             if (tab === 'logs') loadActivityLogs();
             if (tab === 'settings' || tab === 'dev') loadSystemSettings();
@@ -339,11 +339,11 @@
 
         async function initChart() {
             const ctx = document.getElementById('userChart');
-            
+
             const { data: users } = await supabaseClient
-            .from('profiles')
-            .select('created_at, status, is_banned')
-            .order('created_at', { ascending: true });
+           .from('profiles')
+           .select('created_at, status, is_banned')
+           .order('created_at', { ascending: true });
 
             if (!users || users.length === 0) {
                 ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
@@ -353,21 +353,21 @@
             const months = [];
             const userCounts = [];
             const bannedCounts = [];
-            
+
             for (let i = 5; i >= 0; i--) {
                 const date = new Date();
                 date.setMonth(date.getMonth() - i);
                 const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                 const monthLabel = date.toLocaleDateString('id-ID', { month: 'short' });
-                
+
                 months.push(monthLabel);
-                
+
                 const monthUsers = users.filter(u => {
                     const userDate = new Date(u.created_at);
                     const userMonthKey = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
                     return userMonthKey === monthKey;
                 });
-                
+
                 userCounts.push(monthUsers.length);
                 bannedCounts.push(monthUsers.filter(u => u.is_banned).length);
             }
@@ -392,7 +392,7 @@
                         {
                             label: 'Banned',
                             data: bannedCounts,
-                            borderColor: 'rgba(239,68,1)',
+                            borderColor: 'rgba(239,68,68,1)',
                             backgroundColor: 'rgba(239,68,68,0.2)',
                             tension: 0.4,
                             fill: true
@@ -410,10 +410,10 @@
 
         async function loadActivityLogs() {
             const { data: logs } = await supabaseClient
-            .from('activity_logs')
-            .select('*, profiles(full_name, email)')
-            .order('created_at', { ascending: false })
-            .limit(100);
+           .from('activity_logs')
+           .select('*, profiles(full_name, email)')
+           .order('created_at', { ascending: false })
+           .limit(100);
 
             const tbody = document.getElementById('activityLogs');
             if (!logs || logs.length === 0) {
@@ -448,9 +448,9 @@
 
         async function loadUsers() {
             const { data: users, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
+           .from('profiles')
+           .select('*')
+           .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
@@ -507,10 +507,10 @@
                 const isCurrentUser = user.id === currentAdmin.id;
                 const isDev = user.role === 'dev';
                 const isBanned = user.is_banned;
-                const lastActive = user.last_active 
-                ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                const lastActive = user.last_active
+               ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                     : 'Never';
-                
+
                 return `
                 <div class="user-card" style="${isBanned? 'border-color: var(--error); background: #fef2f2;' : ''}">
                     <input type="checkbox" class="user-checkbox"
@@ -540,8 +540,8 @@
                                 <option value="admin" ${user.role === 'admin'? 'selected' : ''}>Admin</option>
                                 ${currentAdmin.role === 'dev'? `<option value="dev" ${user.role === 'dev'? 'selected' : ''}>Dev</option>` : ''}
                             </select>
-                            ${isBanned? 
-                                `<button onclick="unbanUser('${user.id}')" style="background:var(--success);color:white;">✅ Unban</button>` : 
+                            ${isBanned?
+                                `<button onclick="unbanUser('${user.id}')" style="background:var(--success);color:white;">✅ Unban</button>` :
                                 `<button onclick="banUser('${user.id}')" style="background:var(--error);color:white;">🚫 Ban</button>`
                             }
                         ` : ''}
@@ -562,7 +562,7 @@
                                    (user.full_name || '').toLowerCase().includes(search);
                 const matchRole = roleFilter === 'all' || user.role === roleFilter;
                 const matchStatus = statusFilter === 'all' || user.status === statusFilter;
-                const matchBanned = bannedFilter === 'all' || 
+                const matchBanned = bannedFilter === 'all' ||
                                    (bannedFilter === 'banned' && user.is_banned) ||
                                    (bannedFilter === 'active' &&!user.is_banned);
                 return matchSearch && matchRole && matchStatus && matchBanned;
@@ -600,13 +600,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({
+           .from('profiles')
+           .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-            .eq('id', userId);
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -621,9 +621,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ status: 'rejected' })
-            .eq('id', userId);
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -636,7 +636,7 @@
 
         async function changeRole(userId, newRole) {
             const user = allUsers.find(u => u.id === userId);
-            
+
             if (user.role === 'dev' && currentAdmin.role!== 'dev') {
                 showToast('❌ Only DEV boleh tukar role DEV!', 'error');
                 loadUsers();
@@ -650,9 +650,9 @@
             }
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
+           .from('profiles')
+           .update({ role: newRole })
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -668,14 +668,14 @@
             if (!reason) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ 
+           .from('profiles')
+           .update({
                     is_banned: true,
                     banned_reason: reason,
                     banned_at: new Date().toISOString(),
                     banned_by: currentAdmin.id
                 })
-            .eq('id', userId);
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -690,14 +690,14 @@
             if (!confirm('Unban user ni?')) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ 
+           .from('profiles')
+           .update({
                     is_banned: false,
                     banned_reason: null,
                     banned_at: null,
                     banned_by: null
                 })
-            .eq('id', userId);
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -713,13 +713,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({
+           .from('profiles')
+           .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-            .in('id', Array.from(selectedUsers));
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -736,9 +736,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ status: 'rejected' })
-            .in('id', Array.from(selectedUsers));
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -756,14 +756,14 @@
             if (!reason) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ 
+           .from('profiles')
+           .update({
                 is_banned: true,
                 banned_reason: reason,
                 banned_at: new Date().toISOString(),
                 banned_by: currentAdmin.id
             })
-            .in('id', Array.from(selectedUsers));
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -780,9 +780,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .delete()
-            .in('id', Array.from(selectedUsers));
+           .from('profiles')
+           .delete()
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -812,7 +812,7 @@
         // DEV SETTINGS FUNCTIONS
         async function loadSystemSettings() {
             const { data } = await supabaseClient.from('system_settings').select('*').eq('id', 1).single();
-            
+
             if (data) {
                 document.getElementById('siteName').value = data.site_name || '';
                 document.getElementById('maintenanceMode').checked = data.maintenance_mode;
@@ -825,8 +825,8 @@
 
         async function saveSettings() {
             const { error } = await supabaseClient
-           .from('system_settings')
-           .update({
+          .from('system_settings')
+          .update({
                     site_name: document.getElementById('siteName').value,
                     maintenance_mode: document.getElementById('maintenanceMode').checked,
                     registration_enabled: document.getElementById('registrationEnabled').checked,
@@ -836,7 +836,7 @@
                     updated_at: new Date().toISOString(),
                     updated_by: currentAdmin.id
                 })
-           .eq('id', 1);
+          .eq('id', 1);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -849,7 +849,7 @@
             const title = document.getElementById('notifTitle').value.trim();
             const message = document.getElementById('notifMessage').value.trim();
             const type = document.getElementById('notifType').value;
-            
+
             if (!title ||!message) {
                 showToast('Isi title & message!', 'error');
                 return;
@@ -858,7 +858,7 @@
             if (!confirm(`Send announcement ke SEMUA user?`)) return;
 
             const { data: users } = await supabaseClient.from('profiles').select('id');
-            
+
             const notifications = users.map(u => ({
                 user_id: u.id,
                 title: title,
@@ -943,7 +943,7 @@
         async function clearAllLogs() {
             if (!confirm('Delete SEMUA activity logs? Tak boleh undo!')) return;
             
-            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-000000000000');
+            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
             
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -990,6 +990,7 @@
 [${new Date().toISOString()}] All systems operational
 [${new Date().toISOString()}] Database connected
 [${new Date().toISOString()}] Auth service running
+[${new Date().toISOString()}] Maintenance check: OK
             `;
         }
 
