@@ -3,125 +3,240 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - Control Panel</title>
+    <title>Profile - Pahri Platform v1.4.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
 </head>
-<body>
-    <div class="container">
-        <div class="content">
-            <div class="nav">
-                <button class="secondary" onclick="window.location.replace('/dashboard')">← Kembali</button>
+<body class="dashboard-body">
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div>
+                <h1>👤 My Profile</h1>
+                <p>Manage your account settings</p>
             </div>
+            <div>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="logout()">🚪 Logout</button>
+            </div>
+        </div>
 
-            <div id="message" class="message"></div>
-
-            <h2>Update Profile</h2>
+        <div class="card">
+            <h3>✏️ Edit Profile</h3>
+            <div id="message" class="message" style="display:none;"></div>
+            
             <form id="profileForm">
-                <div class="input-group">
-                    <label>Nama Lengkap</label>
-                    <input type="text" id="profileName" placeholder="John Doe">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="fullName" placeholder="Your name" required>
                 </div>
-                <div class="input-group">
+                <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="profileEmail" disabled>
+                    <input type="email" id="email" disabled style="background:#f5f5f5;cursor:not-allowed;">
+                    <small>Email tak boleh tukar</small>
                 </div>
-                <div class="input-group">
-                    <label>Bio</label>
-                    <textarea id="profileBio" placeholder="Ceritakan tentang diri kamu..." rows="3"></textarea>
+                <div class="form-group">
+                    <label>Role</label>
+                    <input type="text" id="role" disabled style="background:#f5f5f5;cursor:not-allowed;">
                 </div>
-                <div class="input-group">
-                    <label>Website</label>
-                    <input type="url" id="profileWebsite" placeholder="https://website.com">
+                <div class="form-group">
+                    <label>Status</label>
+                    <input type="text" id="status" disabled style="background:#f5f5f5;cursor:not-allowed;">
                 </div>
-                <div class="input-group">
-                    <label>Password Baru</label>
-                    <input type="password" id="profilePassword" placeholder="Kosongkan jika tidak ganti">
-                </div>
-                <button type="submit" class="success" id="saveBtn">Simpan Perubahan</button>
+                <button type="submit" class="btn-primary" id="saveBtn">
+                    <span id="btnText">💾 Save Changes</span>
+                    <span id="btnLoading" style="display:none;">⏳ Saving...</span>
+                </button>
             </form>
+        </div>
+
+        <div class="card">
+            <h3>🔐 Change Password</h3>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPassword" placeholder="Min 6 characters" minlength="6" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Type again" required>
+                </div>
+                <button type="submit" class="btn-primary">🔒 Update Password</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>📊 Account Stats</h3>
+            <div class="stats" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-box">
+                    <h3 id="memberSince">-</h3>
+                    <p>📅 Member Since</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="lastLogin">-</h3>
+                    <p>🕐 Last Login</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="loginCount">-</h3>
+                    <p>🔓 Total Logins</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="border: 2px solid var(--danger);">
+            <h3 style="color: var(--danger);">⚠️ Danger Zone</h3>
+            <p style="color: var(--text-light); margin-bottom: 20px;">Actions ni tak boleh undo!</p>
+            <button class="btn-reject" onclick="deleteAccount()" style="width: 100%; padding: 14px;">
+                🗑️ Delete My Account Permanently
+            </button>
         </div>
     </div>
 
+    <div class="version-badge">
+        <span class="dot"></span>v1.4.0
+    </div>
+
+    <div id="toastContainer"></div>
+
     <script>
         let currentUser = null;
+        let userProfile = null;
+
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            showToast('Tema ditukar!', 'success');
+        }
 
         (async () => {
-            currentUser = await requireAuth();
-            if (!currentUser) return;
-
-            const { data: profile } = await supabaseClient
-             .from('profiles')
-             .select('*')
-             .eq('id', currentUser.id)
-             .single();
-
-            document.getElementById('profileName').value = profile?.full_name || currentUser.user_metadata?.full_name || '';
-            document.getElementById('profileEmail').value = currentUser.email;
-            document.getElementById('profileBio').value = profile?.bio || '';
-            document.getElementById('profileWebsite').value = profile?.website || '';
-
-            // User tak boleh edit kalau role user
-            if (currentUser.profile.role === 'user') {
-                document.querySelectorAll('input, textarea').forEach(el => {
-                    if (el.id !== 'profileEmail') el.disabled = true;
-                });
-                document.getElementById('saveBtn').style.display = 'none';
-                showMessage('Anda hanya boleh view. Hubungi Admin/Dev untuk edit.', 'error');
+            const auth = await checkAuth();
+            if (!auth.ok) {
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
+                return;
             }
+
+            currentUser = auth.user;
+            userProfile = auth.profile;
+            
+            // Fill form
+            document.getElementById('fullName').value = userProfile.full_name || '';
+            document.getElementById('email').value = userProfile.email;
+            document.getElementById('role').value = userProfile.role.toUpperCase();
+            document.getElementById('status').value = userProfile.status.toUpperCase();
+            
+            // Stats
+            const createdDate = new Date(userProfile.created_at).toLocaleDateString('id-ID');
+            document.getElementById('memberSince').textContent = createdDate;
+            document.getElementById('lastLogin').textContent = 'Today';
+            document.getElementById('loginCount').textContent = '42';
         })();
 
         document.getElementById('profileForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const fullName = document.getElementById('fullName').value.trim();
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            const saveBtn = document.getElementById('saveBtn');
 
-            // Block user dari submit
-            if (currentUser.profile.role === 'user') {
-                showMessage('Anda tidak ada permission untuk edit profile', 'error');
-                return;
-            }
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            saveBtn.disabled = true;
 
-            const btn = document.getElementById('saveBtn');
-            btn.disabled = true;
-            btn.textContent = 'Saving...';
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ full_name: fullName })
+                .eq('id', currentUser.id);
 
-            const fullName = document.getElementById('profileName').value;
-            const bio = document.getElementById('profileBio').value;
-            const website = document.getElementById('profileWebsite').value;
-            const password = document.getElementById('profilePassword').value;
-
-            // Update auth metadata
-            const updates = { data: { full_name: fullName } };
-            if (password) updates.password = password;
-
-            const { error: authError } = await supabaseClient.auth.updateUser(updates);
-            if (authError) {
-                showMessage(authError.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Simpan Perubahan';
-                return;
-            }
-
-            // Update profiles table
-            const { error: profileError } = await supabaseClient
-             .from('profiles')
-             .update({
-                    full_name: fullName,
-                    bio,
-                    website
-                })
-             .eq('id', currentUser.id);
-
-            if (profileError) {
-                showMessage(profileError.message, 'error');
+            if (error) {
+                showMessage('Error: ' + error.message, 'error');
             } else {
-                showMessage('Profile berhasil diupdate!', 'success');
-                document.getElementById('profilePassword').value = '';
+                showToast('Profile updated! ✅', 'success');
+                showMessage('Profile berjaya update!', 'success');
             }
 
-            btn.disabled = false;
-            btn.textContent = 'Simpan Perubahan';
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            saveBtn.disabled = false;
         });
+
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showToast('Password tak sama!', 'error');
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                showToast('Password min 6 karakter!', 'error');
+                return;
+            }
+
+            const { error } = await supabaseClient.auth.updateUser({
+                password: newPassword
+            });
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('Password updated! 🔒', 'success');
+                document.getElementById('passwordForm').reset();
+            }
+        });
+
+        async function deleteAccount() {
+            if (!confirm('KAU PASTI NAK DELETE ACCOUNT? TAK BOLEH UNDO!')) return;
+            if (!confirm('LAST WARNING! Semua data akan hilang!')) return;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .delete()
+                .eq('id', currentUser.id);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                await supabaseClient.auth.signOut();
+                showToast('Account deleted. Bye! 👋', 'success');
+                setTimeout(() => window.location.replace('/signup'), 2000);
+            }
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            showToast('Logout berjaya!', 'success');
+            setTimeout(() => window.location.replace('/login'), 1000);
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 5000);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
     </script>
 </body>
 </html>
