@@ -31,33 +31,17 @@
     </div>
 
     <script>
-        // Check session + force fetch fresh profile dari DB
         async function checkSession() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) {
-                const { data: profile, error } = await supabaseClient
-                    .from('profiles')
-                    .select('status')
-                    .eq('id', session.user.id)
-                    .single();
-                    
-                if (error || !profile) {
-                    await supabaseClient.auth.signOut();
-                    return;
-                }
-                
-                if (profile.status === 'approved') {
-                    window.location.href = '/dashboard';
-                } else {
-                    await supabaseClient.auth.signOut();
-                    showMessage('Akaun anda masih pending. Tunggu admin approve.', 'error');
-                }
+            const profile = await getProfile();
+            if (profile && profile.status === 'approved') {
+                window.location.href = '/dashboard';
+            } else if (profile && profile.status === 'pending') {
+                await supabaseClient.auth.signOut();
+                showMessage('Akaun masih pending. Tunggu admin approve.', 'error');
             }
         }
-
         document.addEventListener('DOMContentLoaded', checkSession);
 
-        // Handle Login
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('loginBtn');
@@ -67,10 +51,7 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ 
-                email, 
-                password 
-            });
+            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
             if (error) {
                 showMessage(error.message, 'error');
@@ -79,22 +60,11 @@
                 return;
             }
 
-            // WAJIB: Fetch profile fresh dari DB lepas login
-            const { data: profile, error: profileError } = await supabaseClient
-                .from('profiles')
-                .select('status, role')
-                .eq('id', data.user.id)
-                .single();
-
-            if (profileError) {
-                showMessage('Gagal baca profile: ' + profileError.message, 'error');
+            const profile = await getProfile();
+            if (!profile) {
+                showMessage('Profile tak jumpa', 'error');
                 await supabaseClient.auth.signOut();
-                btn.disabled = false;
-                btn.textContent = 'Login';
-                return;
-            }
-
-            if (profile.status !== 'approved') {
+            } else if (profile.status !== 'approved') {
                 showMessage('Akaun anda masih pending approval.', 'error');
                 await supabaseClient.auth.signOut();
             } else {
