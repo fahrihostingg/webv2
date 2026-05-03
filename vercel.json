@@ -6,7 +6,7 @@
     { "source": "/login", "destination": "/login.html" },
     { "source": "/dashboard", "destination": "/dashboard.html" },
     { "source": "/profile", "destination": "/profile.html" },
-    { "source": "/createdev", "destination": "/createdev.html" },
+    { "source": "/admin", "destination": "/admin.html" },
     { "source": "/", "destination": "/index.html" }
   ]
 }
