@@ -68,11 +68,13 @@
                 return;
             }
 
+            await supabaseClient.auth.refreshSession();
+
             const { data: profile } = await supabaseClient
-              .from('profiles')
-              .select('status')
-              .eq('id', data.user.id)
-              .single();
+             .from('profiles')
+             .select('status')
+             .eq('id', data.user.id)
+             .single();
 
             if (!profile || profile.status === 'pending') {
                 await supabaseClient.auth.signOut();
