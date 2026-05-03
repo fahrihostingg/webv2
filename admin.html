@@ -3,11 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Pahri v1.6.0</title>
+    <title>Admin Panel - Pahri v1.6.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="supabase.js"></script>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
 </head>
 <body class="admin-body">
     <div class="dashboard">
@@ -17,7 +25,9 @@
                 <p id="adminWelcome">Loading...</p>
             </div>
             <div>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+                    <span id="themeIcon">🌓</span> Tema
+                </button>
                 <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
                 <button onclick="window.location.href='/profile'">👤 Profile</button>
                 <button onclick="logout()">🚪 Logout</button>
@@ -98,7 +108,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.6.0
+        <span class="dot"></span>v1.6.2
     </div>
 
     <div id="toastContainer"></div>
@@ -110,13 +120,30 @@
         let currentAdmin = null;
         window.userChartInstance = null;
 
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+        });
+
+        function applyTheme() {
+            const theme = localStorage.getItem('theme');
+            const isDark = theme === 'dark';
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark-mode');
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeIcon').textContent = '🌙';
+            }
         }
 
         function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode')? 'dark' : 'light');
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme();
             showToast('Tema ditukar!', 'success');
         }
 
@@ -138,23 +165,23 @@
 
         async function loadStats() {
             const { count: totalUsers } = await supabaseClient
-           .from('profiles')
-           .select('*', { count: 'exact', head: true });
+          .from('profiles')
+          .select('*', { count: 'exact', head: true });
 
             const { count: pendingCount } = await supabaseClient
-           .from('profiles')
-           .select('*', { count: 'exact', head: true })
-           .eq('status', 'pending');
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
 
             const { count: adminCount } = await supabaseClient
-           .from('profiles')
-           .select('*', { count: 'exact', head: true })
-           .eq('role', 'admin');
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'admin');
 
             const { count: approvedCount } = await supabaseClient
-           .from('profiles')
-           .select('*', { count: 'exact', head: true })
-           .eq('status', 'approved');
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'approved');
 
             document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
@@ -180,9 +207,9 @@
             const ctx = document.getElementById('userChart');
             
             const { data: users, error } = await supabaseClient
-           .from('profiles')
-           .select('created_at, status')
-           .order('created_at', { ascending: true });
+          .from('profiles')
+          .select('created_at, status')
+          .order('created_at', { ascending: true });
 
             if (error ||!users || users.length === 0) {
                 ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
@@ -271,10 +298,10 @@
 
         async function loadActivityLogs() {
             const { data: logs, error } = await supabaseClient
-              .from('activity_logs')
-              .select('*, profiles(full_name, email)')
-              .order('created_at', { ascending: false })
-              .limit(50);
+             .from('activity_logs')
+             .select('*, profiles(full_name, email)')
+             .order('created_at', { ascending: false })
+             .limit(50);
 
             const tbody = document.getElementById('activityLogs');
             if (error ||!logs || logs.length === 0) {
@@ -309,9 +336,9 @@
 
         async function loadUsers() {
             const { data: users, error } = await supabaseClient
-           .from('profiles')
-           .select('*')
-           .order('created_at', { ascending: false });
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
@@ -370,7 +397,7 @@
                 const isCurrentUser = user.id === currentAdmin.id;
                 const isDev = user.role === 'dev';
                 const lastActive = user.last_active 
-                   ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                  ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                     : 'Never';
                 
                 return `
@@ -452,13 +479,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({
+          .from('profiles')
+          .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-           .eq('id', userId);
+          .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -474,9 +501,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({ status: 'rejected' })
-           .eq('id', userId);
+          .from('profiles')
+          .update({ status: 'rejected' })
+          .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -504,9 +531,9 @@
             }
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({ role: newRole })
-           .eq('id', userId);
+          .from('profiles')
+          .update({ role: newRole })
+          .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -523,13 +550,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({
+          .from('profiles')
+          .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-           .in('id', Array.from(selectedUsers));
+          .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -547,9 +574,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({ status: 'rejected' })
-           .in('id', Array.from(selectedUsers));
+          .from('profiles')
+          .update({ status: 'rejected' })
+          .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -567,9 +594,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .delete()
-           .in('id', Array.from(selectedUsers));
+          .from('profiles')
+          .delete()
+          .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -585,7 +612,7 @@
         function exportUsers() {
             const csv = [
                 'Name,Email,Role,Status,Created,Last Active,Login Count',
-            ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
+           ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
