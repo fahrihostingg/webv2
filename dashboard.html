@@ -8,11 +8,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
     <script>
-        (function() {
-            const theme = localStorage.getItem('theme');
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark-mode');
-            }
+(async () => {
+    const auth = await checkAuth();
+    if (!auth.ok) {
+        showToast(auth.msg, 'error');
+        setTimeout(() => window.location.replace(auth.redirect), 1500);
+        return;
+    }
+
+    currentUser = auth.profile;
+    loadDashboard();
+    loadAnnouncement();
+    loadNotifications();
+})();
         })();
     </script>
 </head>
