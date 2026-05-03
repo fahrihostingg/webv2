@@ -44,8 +44,9 @@ async function checkAuth(requiredRole = null) {
         return { ok: false, redirect: '/maintenance', msg: 'Website maintenance' };
     }
 
+    // CHECK BANNED - REDIRECT KE /banned
     if (profile.is_banned) {
-        return { ok: false, redirect: '/login', msg: `Account BANNED: ${profile.banned_reason || 'No reason'}` };
+        return { ok: false, redirect: '/banned', msg: `Account BANNED: ${profile.banned_reason || 'No reason'}` };
     }
 
     if (profile.status === 'pending') {
