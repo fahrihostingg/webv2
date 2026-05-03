@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Pahri v1.6.2</title>
+    <title>Dashboard - Pahri v1.7.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -33,9 +33,14 @@
             </div>
         </div>
 
+        <div id="announcementCard" class="card" style="display:none; border-left: 4px solid var(--info);">
+            <h3>📢 Announcement</h3>
+            <p id="announcementText"></p>
+        </div>
+
         <div class="card">
             <h3>🎉 Selamat Datang!</h3>
-            <p>Akaun kau dah approved. Nikmati Pahri Platform v1.6.2</p>
+            <p>Akaun kau dah approved. Nikmati Pahri Platform v1.7.0</p>
             <div class="stats">
                 <div class="stat-box">
                     <h3 id="loginCount">0</h3>
@@ -49,6 +54,17 @@
                     <h3 id="joinDate">-</h3>
                     <p>📅 Join Date</p>
                 </div>
+                <div class="stat-box">
+                    <h3 id="notifCount">0</h3>
+                    <p>🔔 Notifications</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>🔔 Notifications <button class="btn-secondary" onclick="markAllRead()" style="float:right;font-size:12px;">Mark All Read</button></h3>
+            <div id="notifList" style="max-height: 300px; overflow-y: auto;">
+                <p style="text-align:center;color:#999;">Loading...</p>
             </div>
         </div>
 
@@ -61,7 +77,7 @@
                 <button class="btn-secondary" onclick="window.location.href='/forgot-password'">
                     🔑 Reset Password
                 </button>
-                <button class="btn-secondary" onclick="showToast('Coming soon v1.7.0!', 'info')">
+                <button class="btn-secondary" onclick="showToast('Coming soon v1.8.0!', 'info')">
                     📊 Analytics
                 </button>
             </div>
@@ -69,7 +85,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.6.2
+        <span class="dot"></span>v1.7.0
     </div>
 
     <div id="toastContainer"></div>
@@ -113,26 +129,78 @@
             }
 
             const { data: profile } = await supabaseClient
-             .from('profiles')
-             .select('*')
-             .eq('id', session.user.id)
-             .single();
+           .from('profiles')
+           .select('*')
+           .eq('id', session.user.id)
+           .single();
 
-            if (!profile || profile.status!== 'approved') {
-                showToast('Akaun belum approved', 'error');
+            if (!profile || profile.status!== 'approved' || profile.is_banned) {
+                showToast('Akaun bermasalah', 'error');
                 setTimeout(() => window.location.replace('/login'), 1500);
                 return;
             }
 
             currentUser = profile;
             loadDashboard();
+            loadAnnouncement();
+            loadNotifications();
         })();
+
+        async function loadAnnouncement() {
+            const { data } = await supabaseClient.from('system_settings').select('announcement').eq('id', 1).single();
+            if (data && data.announcement) {
+                document.getElementById('announcementCard').style.display = 'block';
+                document.getElementById('announcementText').textContent = data.announcement;
+            }
+        }
+
+        async function loadNotifications() {
+            const { data } = await supabaseClient
+           .from('notifications')
+           .select('*')
+           .eq('user_id', currentUser.id)
+           .order('created_at', { ascending: false })
+           .limit(10);
+
+            const notifList = document.getElementById('notifList');
+            const unread = data? data.filter(n =>!n.is_read).length : 0;
+            document.getElementById('notifCount').textContent = unread;
+
+            if (!data || data.length === 0) {
+                notifList.innerHTML = '<p style="text-align:center;color:#999;">No notifications</p>';
+                return;
+            }
+
+            notifList.innerHTML = data.map(n => `
+                <div style="padding: 12px; border-bottom: 1px solid var(--border); ${n.is_read? 'opacity: 0.6;' : 'background: var(--bg);'}">
+                    <div style="display:flex;justify-content:space-between;align-items:start;">
+                        <div style="flex:1;">
+                            <strong style="font-size:14px;">${n.title}</strong>
+                            <p style="margin:4px 0;font-size:13px;color:var(--text-light);">${n.message}</p>
+                            <small style="color:var(--text-muted);font-size:11px;">${new Date(n.created_at).toLocaleString('id-ID')}</small>
+                        </div>
+                        ${!n.is_read? `<button onclick="markRead('${n.id}')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;">Mark Read</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function markRead(notifId) {
+            await supabaseClient.from('notifications').update({ is_read: true }).eq('id', notifId);
+            loadNotifications();
+        }
+
+        async function markAllRead() {
+            await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
+            loadNotifications();
+            showToast('All marked as read!', 'success');
+        }
 
         function loadDashboard() {
             document.getElementById('userWelcome').textContent = `Hi, ${currentUser.full_name || currentUser.email}`;
             document.getElementById('loginCount').textContent = currentUser.login_count || 0;
             document.getElementById('lastActive').textContent = currentUser.last_active 
-              ? new Date(currentUser.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+            ? new Date(currentUser.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                 : 'Baru je';
             document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
 
