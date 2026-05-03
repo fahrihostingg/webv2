@@ -46,25 +46,43 @@
             btn.disabled = true;
             btn.textContent = 'Daftar...';
 
+            const fullName = document.getElementById('fullName').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
             try {
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value,
+                // 1. Signup user kat auth.users dulu
+                const { data: signUpData, error: signUpError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password,
                     options: {
-                        data: {
-                            full_name: document.getElementById('fullName').value
-                        }
+                        data: { full_name: fullName }
                     }
                 });
                 
-                if (error) throw error;
-                
-                if (data.user) {
-                    showMessage('Daftar berjaya! Tunggu admin approve akaun anda.', 'success');
-                    setTimeout(() => window.location.replace('/login'), 3000);
-                } else {
-                    throw new Error('Signup gagal. Sila cuba lagi.');
+                if (signUpError) throw signUpError;
+                if (!signUpData.user) throw new Error('Signup gagal');
+
+                // 2. Manual insert ke profiles lepas signup
+                const { error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .insert({
+                        id: signUpData.user.id,
+                        full_name: fullName,
+                        email: email,
+                        role: 'user',
+                        status: 'pending'
+                    });
+
+                if (profileError) {
+                    console.error('Profile insert error:', profileError);
+                    // Kalau profile gagal, delete user auth supaya tak tergantung
+                    throw new Error('Gagal buat profile: ' + profileError.message);
                 }
+
+                showMessage('Daftar berjaya! Tunggu admin approve akaun anda.', 'success');
+                setTimeout(() => window.location.replace('/login'), 3000);
+
             } catch (err) {
                 console.error('Signup error:', err);
                 showMessage(err.message, 'error');
