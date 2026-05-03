@@ -166,24 +166,14 @@
         }
 
         (async () => {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) {
-                window.location.replace('/login');
+            const auth = await checkAuth();
+            if (!auth.ok) {
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
                 return;
             }
 
-            const { data: profile } = await supabaseClient
-           .from('profiles')
-           .select('*')
-           .eq('id', session.user.id)
-           .single();
-
-            if (!profile) {
-                showToast('Profile not found', 'error');
-                return;
-            }
-
-            currentUser = profile;
+            currentUser = auth.profile;
             loadProfile();
         })();
 
@@ -195,7 +185,7 @@
             document.getElementById('status').value = currentUser.status.toUpperCase();
             document.getElementById('loginCount').textContent = currentUser.login_count || 0;
             document.getElementById('lastActive').textContent = currentUser.last_active 
-           ? new Date(currentUser.last_active).toLocaleString('id-ID') 
+          ? new Date(currentUser.last_active).toLocaleString('id-ID') 
                 : 'Never';
             document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
 
@@ -212,7 +202,7 @@
         function load2FAStatus() {
             const enabled = currentUser.two_factor_enabled;
             document.getElementById('twoFactorStatus').innerHTML = enabled 
-           ? '<span class="badge badge-approved">✅ Enabled</span>' 
+          ? '<span class="badge badge-approved">✅ Enabled</span>' 
                 : '<span class="badge badge-pending">❌ Disabled</span>';
             document.getElementById('toggle2FA').textContent = enabled? 'Disable 2FA' : 'Enable 2FA';
             document.getElementById('emailNotif').checked = currentUser.email_notifications;
@@ -221,9 +211,9 @@
         async function toggle2FA() {
             const newStatus =!currentUser.two_factor_enabled;
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({ two_factor_enabled: newStatus })
-           .eq('id', currentUser.id);
+          .from('profiles')
+          .update({ two_factor_enabled: newStatus })
+          .eq('id', currentUser.id);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -237,9 +227,9 @@
         async function updateNotifSettings() {
             const enabled = document.getElementById('emailNotif').checked;
             await supabaseClient
-           .from('profiles')
-           .update({ email_notifications: enabled })
-           .eq('id', currentUser.id);
+          .from('profiles')
+          .update({ email_notifications: enabled })
+          .eq('id', currentUser.id);
             showToast('Settings updated!', 'success');
         }
 
@@ -279,8 +269,8 @@
                 const fileName = `${currentUser.id}.${fileExt}`;
                 
                 const { error: uploadError } = await supabaseClient.storage
-               .from('avatars')
-               .upload(fileName, avatarFile, { upsert: true });
+              .from('avatars')
+              .upload(fileName, avatarFile, { upsert: true });
 
                 if (uploadError) {
                     showMessage('Error upload avatar: ' + uploadError.message, 'error');
@@ -295,13 +285,13 @@
             }
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({ 
+          .from('profiles')
+          .update({ 
                     full_name: fullName,
                     avatar_url: avatarUrl,
                     updated_at: new Date().toISOString()
                 })
-           .eq('id', currentUser.id);
+          .eq('id', currentUser.id);
 
             if (error) {
                 showMessage('Error: ' + error.message, 'error');
@@ -327,10 +317,10 @@
 
         async function downloadMyData() {
             const { data } = await supabaseClient
-           .from('profiles')
-           .select('*')
-           .eq('id', currentUser.id)
-           .single();
+          .from('profiles')
+          .select('*')
+          .eq('id', currentUser.id)
+          .single();
             
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = window.URL.createObjectURL(blob);
