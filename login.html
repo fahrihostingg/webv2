@@ -32,14 +32,8 @@
 
     <script>
         (async () => {
-            const { ok, profile } = await checkAuth();
-            if (ok) {
-                if (profile.role === 'dev' || profile.role === 'admin') {
-                    window.location.replace('/admin');
-                } else {
-                    window.location.replace('/dashboard');
-                }
-            }
+            const { ok } = await checkAuth();
+            if (ok) window.location.replace('/dashboard');
         })();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -71,11 +65,8 @@
                     throw new Error('Akaun masih pending approval admin');
                 }
 
-                if (profile.role === 'dev' || profile.role === 'admin') {
-                    window.location.replace('/admin');
-                } else {
-                    window.location.replace('/dashboard');
-                }
+                // SEMUA USER MASUK DASHBOARD DULU
+                window.location.replace('/dashboard');
             } catch (err) {
                 showMessage(err.message, 'error');
                 btn.disabled = false;
