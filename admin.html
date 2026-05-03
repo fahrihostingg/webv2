@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Pahri v1.5.7</title>
+    <title>Admin Panel - Pahri v1.6.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -19,6 +19,7 @@
             <div>
                 <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
                 <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="window.location.href='/profile'">👤 Profile</button>
                 <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
@@ -30,7 +31,6 @@
             <div class="skeleton skeleton-card"></div>
         </div>
 
-        <!-- PENDING USERS SECTION -->
         <div class="card" id="pendingSection" style="border: 4px solid var(--warning); display: none;">
             <h3>⏳ Pending Approval <span id="pendingCount" class="badge badge-pending">0</span></h3>
             <p style="color: var(--text-light); margin-bottom: 20px;">User baru yang tunggu approval kau.</p>
@@ -40,6 +40,24 @@
         <div class="card">
             <h3>📈 User Growth Analytics - Real Data</h3>
             <canvas id="userChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>📋 Activity Logs - Real Time <button class="btn-secondary" onclick="loadActivityLogs()" style="float:right;">🔄 Refresh</button></h3>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
+                        <tr style="border-bottom: 2px solid var(--primary);">
+                            <th style="padding: 12px; text-align: left;">User</th>
+                            <th style="padding: 12px; text-align: left;">Action</th>
+                            <th style="padding: 12px; text-align: left;">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityLogs">
+                        <tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <div class="card">
@@ -80,7 +98,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.5.7
+        <span class="dot"></span>v1.6.0
     </div>
 
     <div id="toastContainer"></div>
@@ -115,27 +133,28 @@
 
             await loadStats();
             await loadUsers();
+            await loadActivityLogs();
         })();
 
         async function loadStats() {
             const { count: totalUsers } = await supabaseClient
-            .from('profiles')
-            .select('*', { count: 'exact', head: true });
+           .from('profiles')
+           .select('*', { count: 'exact', head: true });
 
             const { count: pendingCount } = await supabaseClient
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'pending');
+           .from('profiles')
+           .select('*', { count: 'exact', head: true })
+           .eq('status', 'pending');
 
             const { count: adminCount } = await supabaseClient
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'admin');
+           .from('profiles')
+           .select('*', { count: 'exact', head: true })
+           .eq('role', 'admin');
 
             const { count: approvedCount } = await supabaseClient
-            .from('profiles')
-            .select('*', { count: 'exact', head: true })
-            .eq('status', 'approved');
+           .from('profiles')
+           .select('*', { count: 'exact', head: true })
+           .eq('status', 'approved');
 
             document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
@@ -161,17 +180,11 @@
             const ctx = document.getElementById('userChart');
             
             const { data: users, error } = await supabaseClient
-            .from('profiles')
-            .select('created_at, status')
-            .order('created_at', { ascending: true });
+           .from('profiles')
+           .select('created_at, status')
+           .order('created_at', { ascending: true });
 
-            if (error) {
-                console.error('Chart error:', error);
-                ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Error load chart: ' + error.message + '</p>';
-                return;
-            }
-
-            if (!users || users.length === 0) {
+            if (error ||!users || users.length === 0) {
                 ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
                 return;
             }
@@ -239,11 +252,7 @@
                         legend: {
                             display: true,
                             position: 'top',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 15,
-                                font: { size: 12 }
-                            }
+                            labels: { usePointStyle: true, padding: 15, font: { size: 12 } }
                         },
                         tooltip: {
                             mode: 'index',
@@ -253,54 +262,61 @@
                         }
                     },
                     scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1,
-                                font: { size: 11 }
-                            },
-                            grid: {
-                                color: 'rgba(0,0,0,0.05)'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                display: false
-                            },
-                            ticks: {
-                                font: { size: 11 }
-                            }
-                        }
+                        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
                     }
                 }
             });
-
-            console.log('Chart loaded:', { months, userCounts, approvedCounts, pendingCounts });
         }
 
-        async function loadUsers() {
-            console.log('Loading users...');
-            
-            const { data: users, error, count } = await supabaseClient
-            .from('profiles')
-            .select('*', { count: 'exact' })
-            .order('created_at', { ascending: false });
+        async function loadActivityLogs() {
+            const { data: logs, error } = await supabaseClient
+              .from('activity_logs')
+              .select('*, profiles(full_name, email)')
+              .order('created_at', { ascending: false })
+              .limit(50);
 
-            if (error) {
-                showToast('Error load users: ' + error.message, 'error');
-                console.error('Load users error:', error);
-                document.getElementById('usersList').innerHTML = `
-                    <div style="padding:20px;background:#fee;border:2px solid #f88;border-radius:8px;">
-                        <strong>Error:</strong> ${error.message}<br>
-                        <strong>Hint:</strong> ${error.hint || 'Check RLS policy'}<br>
-                        <strong>Code:</strong> ${error.code}
-                    </div>
-                `;
+            const tbody = document.getElementById('activityLogs');
+            if (error ||!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">No activity yet</td></tr>';
                 return;
             }
 
-            console.log('DB returned:', users);
-            console.log('Total count from DB:', count);
+            const actionColors = {
+                login: 'approved',
+                logout: 'user',
+                profile_update: 'dev',
+                password_reset: 'pending'
+            };
+
+            tbody.innerHTML = logs.map(log => `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">
+                        <strong>${log.profiles?.full_name || 'Unknown'}</strong><br>
+                        <small style="color:#999;">${log.profiles?.email || ''}</small>
+                    </td>
+                    <td style="padding: 12px;">
+                        <span class="badge badge-${actionColors[log.action] || 'user'}">
+                            ${log.action.toUpperCase().replace('_', ' ')}
+                        </span>
+                    </td>
+                    <td style="padding: 12px; font-size: 13px;">
+                        ${new Date(log.created_at).toLocaleString('id-ID')}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadUsers() {
+            const { data: users, error } = await supabaseClient
+           .from('profiles')
+           .select('*')
+           .order('created_at', { ascending: false });
+
+            if (error) {
+                showToast('Error load users: ' + error.message, 'error');
+                return;
+            }
 
             allUsers = users || [];
             pendingUsers = allUsers.filter(u => u.status === 'pending');
@@ -330,11 +346,7 @@
                         <span class="badge badge-pending">PENDING</span>
                         <small style="display: block; margin-top: 5px; color: #999;">
                             Register: ${new Date(user.created_at).toLocaleDateString('id-ID', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
+                                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
                             })}
                         </small>
                     </div>
@@ -357,6 +369,9 @@
             list.innerHTML = users.map(user => {
                 const isCurrentUser = user.id === currentAdmin.id;
                 const isDev = user.role === 'dev';
+                const lastActive = user.last_active 
+                   ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                    : 'Never';
                 
                 return `
                 <div class="user-card">
@@ -371,7 +386,7 @@
                         <span class="badge badge-${user.role}">${user.role}</span>
                         <span class="badge badge-${user.status}">${user.status}</span>
                         <small style="display: block; margin-top: 3px; color: #999;">
-                            ID: ${user.id.substring(0,8)}... | ${new Date(user.created_at).toLocaleDateString('id-ID')}
+                            Last: ${lastActive} | Login: ${user.login_count || 0}x
                         </small>
                     </div>
                     <div class="user-actions">
@@ -437,13 +452,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({
+           .from('profiles')
+           .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-            .eq('id', userId);
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -451,6 +466,7 @@
                 showToast('User approved! ✅', 'success');
                 await loadUsers();
                 await loadStats();
+                await loadActivityLogs();
             }
         }
 
@@ -458,9 +474,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ status: 'rejected' })
-            .eq('id', userId);
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -468,6 +484,7 @@
                 showToast('User rejected! ❌', 'success');
                 await loadUsers();
                 await loadStats();
+                await loadActivityLogs();
             }
         }
 
@@ -487,9 +504,9 @@
             }
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
+           .from('profiles')
+           .update({ role: newRole })
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -497,6 +514,7 @@
             } else {
                 showToast(`Role updated to ${newRole}! 🎭`, 'success');
                 await loadUsers();
+                await loadActivityLogs();
             }
         }
 
@@ -505,13 +523,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({
+           .from('profiles')
+           .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-            .in('id', Array.from(selectedUsers));
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -520,6 +538,7 @@
                 clearSelection();
                 await loadUsers();
                 await loadStats();
+                await loadActivityLogs();
             }
         }
 
@@ -528,9 +547,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ status: 'rejected' })
-            .in('id', Array.from(selectedUsers));
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -539,6 +558,7 @@
                 clearSelection();
                 await loadUsers();
                 await loadStats();
+                await loadActivityLogs();
             }
         }
 
@@ -547,9 +567,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .delete()
-            .in('id', Array.from(selectedUsers));
+           .from('profiles')
+           .delete()
+           .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -558,13 +578,14 @@
                 clearSelection();
                 await loadUsers();
                 await loadStats();
+                await loadActivityLogs();
             }
         }
 
         function exportUsers() {
             const csv = [
-                'Name,Email,Role,Status,Created,Approved At',
-             ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.approved_at || ''}"`)
+                'Name,Email,Role,Status,Created,Last Active,Login Count',
+            ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -577,6 +598,10 @@
         }
 
         async function logout() {
+            await supabaseClient.from('activity_logs').insert({
+                user_id: currentAdmin.id,
+                action: 'logout'
+            });
             await supabaseClient.auth.signOut();
             showToast('Logout berjaya!', 'success');
             setTimeout(() => window.location.replace('/login'), 1000);
