@@ -37,8 +37,8 @@
     <script>
         // Kalau dah login, tendang dashboard
         (async () => {
-            const { ok } = await checkAuth();
-            if (ok) window.location.replace('/dashboard');
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) window.location.replace('/dashboard');
         })();
 
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
@@ -63,24 +63,21 @@
                 });
                 
                 if (signUpError) throw signUpError;
-                if (!signUpData.user) throw new Error('Signup gagal. Tiada user data.');
+                if (!signUpData.user) throw new Error('Signup gagal. Cuba lagi.');
 
-                // 2. Insert ke profiles. WAJIB ada RLS policy "users can insert own profile"
+                // 2. Insert ke profiles - confirm masuk email + status
                 const { error: profileError } = await supabaseClient
                     .from('profiles')
-                    .insert({
+                    .upsert({
                         id: signUpData.user.id,
                         full_name: fullName,
                         email: email,
                         role: 'user',
-                        status: 'pending'
-                    });
+                        status: 'pending',
+                        created_at: new Date().toISOString()
+                    }, { onConflict: 'id' });
 
-                if (profileError) {
-                    // Kalau insert profile gagal, delete auth user balik
-                    console.error('Profile insert error:', profileError);
-                    throw new Error('Gagal buat profile: ' + profileError.message);
-                }
+                if (profileError) throw new Error('Gagal buat profile: ' + profileError.message);
 
                 showMessage('Daftar berjaya! Tunggu admin approve akaun anda.', 'success');
                 document.getElementById('signupForm').reset();
