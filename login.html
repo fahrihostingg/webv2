@@ -30,14 +30,18 @@
                     Masuk dengan Google
                 </button>
                 <p style="text-align: center; margin-top: 20px; color: #6c757d; font-size: 14px;">
-                    Belum punya akun? <a href="signup.html" style="color: #667eea; text-decoration: none;">Daftar</a>
+                    Belum punya akun? <a href="/signup" style="color: #667eea; text-decoration: none;">Daftar</a>
                 </p>
             </form>
         </div>
     </div>
 
     <script>
-        requireGuest();
+        // Check kalau dah login, terus ke dashboard
+        (async () => {
+            const isLoggedIn = await requireGuest();
+            if (isLoggedIn) return;
+        })();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -48,21 +52,21 @@
             const email = document.getElementById('loginEmail').value;
             const password = document.getElementById('loginPassword').value;
 
-            const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
             if (error) {
                 showMessage(error.message, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Masuk';
             } else {
-                window.location.href = 'dashboard.html';
+                window.location.replace('/dashboard');
             }
         });
 
         async function signInWithGoogle() {
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: window.location.origin + '/dashboard.html' }
+                options: { redirectTo: window.location.origin + '/dashboard' }
             });
             if (error) showMessage(error.message, 'error');
         }
@@ -72,7 +76,7 @@
             if (!email) return showMessage('Masukkan email dulu', 'error');
 
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                redirectTo: window.location.origin + '/login.html',
+                redirectTo: window.location.origin + '/login',
             });
 
             if (error) showMessage(error.message, 'error');
