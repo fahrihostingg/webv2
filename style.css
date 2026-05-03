@@ -1,4 +1,4 @@
-/* === AmmarBN Platform v1.2.0 Pro === */
+/* === AmmarBN Platform v1.2.1 Pro === */
 * {
     margin: 0;
     padding: 0;
@@ -22,6 +22,7 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
+    transition: background 0.3s ease;
 }
 
 /* === Auth Pages === */
@@ -44,6 +45,12 @@ body {
     padding: 40px;
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: fadeInUp 0.5s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .auth-card h1 {
@@ -200,10 +207,12 @@ body {
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     text-align: center;
     transition: transform 0.3s;
+    cursor: pointer;
 }
 
 .stat-box:hover {
     transform: translateY(-5px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
 }
 
 .stat-box h3 {
@@ -232,6 +241,12 @@ body {
     border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     margin-bottom: 25px;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .card h3 {
@@ -239,6 +254,9 @@ body {
     color: var(--text-dark);
     font-size: 20px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 /* Search & Filter */
@@ -484,6 +502,13 @@ body {
     font-weight: 600;
     z-index: 9999;
     backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.version-badge:hover {
+    background: rgba(0,0,0,0.9);
+    transform: scale(1.05);
 }
 
 .version-badge .dot {
@@ -513,6 +538,7 @@ body {
     z-index: 10000;
     align-items: center;
     justify-content: center;
+    animation: fadeIn 0.3s ease;
 }
 
 .changelog-content {
@@ -522,6 +548,12 @@ body {
     max-width: 500px;
     max-height: 80vh;
     overflow-y: auto;
+    animation: scaleIn 0.3s ease;
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
 }
 
 .changelog-content h3 {
@@ -606,6 +638,12 @@ body {
     margin-bottom: 8px;
     border-radius: 0 8px 8px 0;
     font-size: 13px;
+    transition: all 0.3s;
+}
+
+.activity-item:hover {
+    background: #e9ecef;
+    transform: translateX(5px);
 }
 
 .activity-time {
@@ -617,7 +655,8 @@ body {
 body.dark-mode .card,
 body.dark-mode .stat-box,
 body.dark-mode .user-card,
-body.dark-mode .changelog-content {
+body.dark-mode .changelog-content,
+body.dark-mode .welcome-card {
     background: var(--card-dark);
     color: #eee;
     border-color: #2a3f5f;
@@ -625,7 +664,9 @@ body.dark-mode .changelog-content {
 
 body.dark-mode .user-info strong,
 body.dark-mode .card h3,
-body.dark-mode .welcome-card h2 {
+body.dark-mode .welcome-card h2,
+body.dark-mode .changelog-content h3,
+body.dark-mode .changelog-content h4 {
     color: #eee;
 }
 
@@ -646,6 +687,11 @@ body.dark-mode .skeleton {
     background: linear-gradient(90deg, #2a3f5f 25%, #1a1a2e 50%, #2a3f5f 75%);
 }
 
+body.dark-mode .toast {
+    background: var(--card-dark);
+    color: #eee;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .stats { grid-template-columns: 1fr; }
@@ -654,4 +700,5 @@ body.dark-mode .skeleton {
     .dashboard-header { flex-direction: column; text-align: center; gap: 15px; }
     .search-bar { flex-direction: column; }
     .bulk-actions { flex-direction: column; gap: 10px; }
+    .version-badge { bottom: 10px; right: 10px; }
 }
