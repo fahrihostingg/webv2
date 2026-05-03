@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Banned - Pahri v1.7.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .banned-card {
+            background: var(--card-bg);
+            padding: 60px 40px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-xl);
+            text-align: center;
+            max-width: 500px;
+            animation: shakeIn 0.6s ease;
+            border: 4px solid var(--error);
+        }
+        @keyframes shakeIn {
+            0% { opacity: 0; transform: translateX(-100px); }
+            50% { transform: translateX(10px); }
+            100% { opacity: 1; transform: translateX(0); }
+        }
+        .banned-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .banned-reason {
+            background: #fef2f2;
+            border-left: 4px solid var(--error);
+            padding: 16px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        html.dark-mode .banned-reason {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+    </style>
+</head>
+<body>
+    <div class="banned-card">
+        <div class="banned-icon">🚫</div>
+        <h1 style="font-size: 28px; margin-bottom: 15px; color: var(--error);">Account Banned</h1>
+        <p style="color: var(--text-light); margin-bottom: 10px; font-size: 16px;">
+            Akaun kau telah disekat oleh admin
+        </p>
+        
+        <div class="banned-reason">
+            <strong style="color: var(--error);">📋 Reason:</strong>
+            <p id="banReason" style="margin: 8px 0 0 0; font-size: 14px;">Loading...</p>
+        </div>
+
+        <div style="background: var(--bg); padding: 16px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 13px; color: var(--text-light);">
+                <strong>Banned at:</strong> <span id="bannedAt">-</span><br>
+                <strong>Banned by:</strong> <span id="bannedBy">-</span>
+            </p>
+        </div>
+
+        <p style="color: var(--text-light); font-size: 14px; margin-bottom: 25px;">
+            Kalau rasa ini salah, contact admin untuk appeal
+        </p>
+
+        <button class="btn-secondary" onclick="contactAdmin()" style="margin-bottom: 10px; width: 100%;">
+            📧 Contact Admin
+        </button>
+        <button class="btn-primary" onclick="logout()" style="width: 100%;">
+            🚪 Logout
+        </button>
+    </div>
+
+    <div class="version-badge">
+        <span class="dot"></span>v1.7.0
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script>
+        (async () => {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            
+            if (!session) {
+                window.location.replace('/login');
+                return;
+            }
+
+            const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('*, banned_by:profiles!banned_by(full_name, email)')
+            .eq('id', session.user.id)
+            .single();
+
+            if (!profile) {
+                window.location.replace('/login');
+                return;
+            }
+
+            // Kalau tak kena ban, redirect keluar
+            if (!profile.is_banned) {
+                window.location.replace('/dashboard');
+                return;
+            }
+
+            // Display ban info
+            document.getElementById('banReason').textContent = profile.banned_reason || 'No reason provided';
+            document.getElementById('bannedAt').textContent = profile.banned_at 
+                ? new Date(profile.banned_at).toLocaleString('id-ID') 
+                : 'Unknown';
+            document.getElementById('bannedBy').textContent = profile.banned_by?.full_name || profile.banned_by?.email || 'System';
+
+            // Auto logout lepas 3 saat kalau tak nak stay
+            setTimeout(() => {
+                showToast('Auto logout dalam 10 saat...', 'warning');
+                setTimeout(() => logout(), 10000);
+            }, 3000);
+        })();
+
+        function contactAdmin() {
+            const subject = 'Appeal Ban - Pahri Platform';
+            const body = `Hi Admin,%0D%0A%0D%0ASaya nak appeal ban akaun saya.%0D%0A%0D%0AEmail: ${currentUser?.email}%0D%0AReason: %0D%0A%0D%0ATerima kasih.`;
+            window.location.href = `mailto:admin@pahri.com?subject=${subject}&body=${body}`;
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            showToast('Logged out', 'info');
+            setTimeout(() => window.location.replace('/login'), 1000);
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            toast.style.cssText = 'position:fixed;top:20px;right:20px;background:var(--card-bg);padding:16px 20px;border-radius:10px;box-shadow:var(--shadow-xl);z-index:9999;display:flex;align-items:center;gap:12px;';
+            toast.innerHTML = `<span style="font-size:20px;">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+    </script>
+</body>
+</html>
