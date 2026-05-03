@@ -30,55 +30,67 @@
         </div>
     </div>
 
-    <script>
-        // Redirect kalau dah login
-        (async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) {
-                const { data: profile } = await supabaseClient.from('profiles').select('status').eq('id', user.id).maybeSingle();
-                if (profile?.status === 'approved') window.location.replace('/dashboard');
+
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('loginBtn');
+        btn.disabled = true;
+        btn.textContent = 'Login...';
+
+        try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            });
+            if (error) throw error;
+
+            // Query profile dengan error handling lengkap
+            const { data: profile, error: pError } = await supabaseClient
+                .from('profiles')
+                .select('status, role, full_name')
+                .eq('id', data.user.id)
+                .maybeSingle();
+
+            if (pError) {
+                console.error('Profile Error:', pError);
+                await supabaseClient.auth.signOut();
+                throw new Error('RLS Error: ' + pError.message);
             }
-        })();
-
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const btn = document.getElementById('loginBtn');
-            btn.disabled = true;
-            btn.textContent = 'Login...';
-
-            try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value
-                });
-                if (error) throw error;
-
-                const { data: profile, error: pError } = await supabaseClient
+            
+            // Kalau profile tak wujud, auto create
+            if (!profile) {
+                const { error: insertError } = await supabaseClient
                     .from('profiles')
-                    .select('status, role')
-                    .eq('id', data.user.id)
-                    .maybeSingle();
-
-                if (pError) throw new Error('Gagal baca profile');
-                if (!profile) throw new Error('Profile tak wujud');
+                    .insert({ 
+                        id: data.user.id, 
+                        full_name: data.user.user_metadata?.full_name || 'User',
+                        role: 'user', 
+                        status: 'pending' 
+                    });
                 
-                if (profile.status === 'approved') {
-                    // Kalau dev/admin, pergi admin page
-                    if (profile.role === 'dev' || profile.role === 'admin') {
-                        window.location.replace('/admin');
-                    } else {
-                        window.location.replace('/dashboard');
-                    }
-                } else {
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Akaun masih pending approval');
-                }
-            } catch (err) {
-                showMessage(err.message, 'error');
-                btn.disabled = false;
-                btn.textContent = 'Login';
+                if (insertError) throw new Error('Gagal buat profile: ' + insertError.message);
+                
+                await supabaseClient.auth.signOut();
+                throw new Error('Profile baru dibuat. Tunggu admin approve.');
             }
-        });
-    </script>
+            
+            if (profile.status === 'approved') {
+                if (profile.role === 'dev' || profile.role === 'admin') {
+                    window.location.replace('/admin');
+                } else {
+                    window.location.replace('/dashboard');
+                }
+            } else {
+                await supabaseClient.auth.signOut();
+                throw new Error('Akaun masih pending approval');
+            }
+        } catch (err) {
+            showMessage(err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Login';
+        }
+    });
+</script>
 </body>
 </html>
