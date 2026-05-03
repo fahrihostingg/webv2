@@ -9,28 +9,59 @@
     <script src="supabase.js"></script>
 </head>
 <body>
-    <div class="container">
+    <div class="container" style="max-width: 900px;">
         <div class="content">
             <div class="nav">
-                <button class="secondary" onclick="window.location.href='dashboard.html'">Home</button>
-                <button class="secondary" onclick="window.location.href='profile.html'">Profile</button>
-                <button class="secondary admin-only" id="adminBtn" style="display:none">Admin</button>
+                <button class="secondary" onclick="window.location.href='/dashboard'">Dashboard</button>
+                <button class="secondary" onclick="window.location.href='/profile'">Profile</button>
+                <button class="secondary admin-only" id="adminBtn" style="display:none" onclick="loadAllPosts()">All Posts</button>
+                <button class="danger" onclick="signOut()" style="margin-left: auto;">Keluar</button>
             </div>
 
             <div id="message" class="message"></div>
 
-            <div style="text-align: center;">
-                <div class="avatar" id="userAvatar">U</div>
-                <h2 id="welcomeText">Loading...</h2>
-                <div id="roleBadge" class="badge user">USER</div>
-                <p class="user-email" id="userEmail"></p>
-                <button class="danger" onclick="signOut()">Keluar</button>
+            <!-- USER INFO -->
+            <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+                <div class="avatar" id="userAvatar" style="margin: 0; width: 60px; height: 60px; font-size: 24px;">U</div>
+                <div>
+                    <h3 id="welcomeText" style="margin-bottom: 4px;">Loading...</h3>
+                    <div id="roleBadge" class="badge user">USER</div>
+                    <p class="user-email" id="userEmail" style="margin: 0; text-align: left;"></p>
+                </div>
+                <div style="margin-left: auto; text-align: right;">
+                    <div style="font-size: 24px; font-weight: 700; color: #667eea;" id="postCount">0</div>
+                    <div style="font-size: 12px; color: #6c757d;">Total Posts</div>
+                </div>
             </div>
+
+            <!-- CREATE POST -->
+            <div style="background: white; border: 2px solid #e9ecef; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                <h3 style="margin-bottom: 16px;">Buat Post Baru</h3>
+                <form id="postForm">
+                    <div class="input-group">
+                        <input type="text" id="postTitle" placeholder="Judul post..." required>
+                    </div>
+                    <div class="input-group">
+                        <textarea id="postContent" placeholder="Tulis sesuatu..." rows="3" style="width: 100%; padding: 12px 16px; border: 2px solid #e9ecef; border-radius: 8px; font-family: inherit; font-size: 15px; resize: vertical;"></textarea>
+                    </div>
+                    <button type="submit" class="success" style="margin: 0;">Publish Post</button>
+                </form>
+            </div>
+
+            <!-- SEARCH -->
+            <div class="input-group">
+                <input type="text" id="searchPost" placeholder="🔍 Cari post..." oninput="filterPosts()">
+            </div>
+
+            <!-- POSTS LIST -->
+            <h3 style="margin-bottom: 16px;">Post Kamu</h3>
+            <div id="postsList"></div>
         </div>
     </div>
 
     <script>
         let currentUser = null;
+        let allPosts = [];
 
         (async () => {
             currentUser = await requireAuth();
@@ -45,11 +76,124 @@
             document.getElementById('roleBadge').textContent = role.toUpperCase();
             document.getElementById('roleBadge').className = 'badge ' + role;
 
-            if (role === 'admin') {
-                document.getElementById('adminBtn').style.display = 'block';
-                document.getElementById('adminBtn').onclick = () => showMessage('Fitur admin belum dibuat', 'success');
-            }
+            if (role === 'admin') document.getElementById('adminBtn').style.display = 'block';
+
+            loadPosts();
         })();
+
+        // CREATE POST
+        document.getElementById('postForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('postTitle').value;
+            const content = document.getElementById('postContent').value;
+
+            const { error } = await supabaseClient.from('posts').insert({
+                user_id: currentUser.id,
+                title,
+                content
+            });
+
+            if (error) {
+                showMessage(error.message, 'error');
+            } else {
+                showMessage('Post berhasil dibuat!', 'success');
+                document.getElementById('postForm').reset();
+                loadPosts();
+            }
+        });
+
+        // LOAD POSTS
+        async function loadPosts() {
+            const { data, error } = await supabaseClient
+               .from('posts')
+               .select('*')
+               .eq('user_id', currentUser.id)
+               .order('created_at', { ascending: false });
+
+            if (error) return showMessage(error.message, 'error');
+
+            allPosts = data;
+            document.getElementById('postCount').textContent = data.length;
+            renderPosts(data);
+        }
+
+        // LOAD ALL POSTS - ADMIN ONLY
+        async function loadAllPosts() {
+            const { data, error } = await supabaseClient
+               .from('posts')
+               .select('*, auth.users(email)')
+               .order('created_at', { ascending: false });
+
+            if (error) return showMessage(error.message, 'error');
+
+            allPosts = data;
+            document.querySelector('h3').textContent = 'Semua Posts (Admin)';
+            renderPosts(data, true);
+        }
+
+        function renderPosts(posts, isAdmin = false) {
+            const list = document.getElementById('postsList');
+            if (posts.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #6c757d; padding: 40px;">Belum ada post</p>';
+                return;
+            }
+
+            list.innerHTML = posts.map(post => `
+                <div class="post-card" style="background: white; border: 2px solid #e9ecef; padding: 16px; border-radius: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                        <h4 style="margin: 0; color: #212529;">${post.title}</h4>
+                        <div>
+                            <button class="link-btn" onclick="editPost('${post.id}')" style="padding: 4px 8px;">Edit</button>
+                            <button class="link-btn" onclick="deletePost('${post.id}')" style="padding: 4px 8px; color: #dc3545;">Delete</button>
+                        </div>
+                    <p style="color: #495057; margin-bottom: 8px; white-space: pre-wrap;">${post.content || ''}</p>
+                    <div style="font-size: 12px; color: #adb5bd;">
+                        ${new Date(post.created_at).toLocaleString('id-ID')}
+                        ${isAdmin && post.auth?.users? ` • ${post.auth.users.email}` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // SEARCH/FILTER
+        function filterPosts() {
+            const query = document.getElementById('searchPost').value.toLowerCase();
+            const filtered = allPosts.filter(p =>
+                p.title.toLowerCase().includes(query) ||
+                (p.content && p.content.toLowerCase().includes(query))
+            );
+            renderPosts(filtered);
+        }
+
+        // DELETE POST
+        async function deletePost(id) {
+            if (!confirm('Hapus post ni?')) return;
+
+            const { error } = await supabaseClient.from('posts').delete().eq('id', id);
+            if (error) showMessage(error.message, 'error');
+            else {
+                showMessage('Post dihapus', 'success');
+                loadPosts();
+            }
+        }
+
+        // EDIT POST
+        async function editPost(id) {
+            const post = allPosts.find(p => p.id === id);
+            const newTitle = prompt('Judul baru:', post.title);
+            if (!newTitle) return;
+            const newContent = prompt('Content baru:', post.content || '');
+
+            const { error } = await supabaseClient.from('posts')
+               .update({ title: newTitle, content: newContent, updated_at: new Date() })
+               .eq('id', id);
+
+            if (error) showMessage(error.message, 'error');
+            else {
+                showMessage('Post diupdate!', 'success');
+                loadPosts();
+            }
+        }
     </script>
 </body>
 </html>
