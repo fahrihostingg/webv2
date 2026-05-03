@@ -2,12 +2,6 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "rewrites": [
-    { "source": "/", "destination": "/login.html" }
-  ],
-  "redirects": [
-    { "source": "/login", "destination": "/login.html" },
-    { "source": "/signup", "destination": "/signup.html" },
-    { "source": "/dashboard", "destination": "/dashboard.html" },
-    { "source": "/profile", "destination": "/profile.html" }
+    { "source": "/", "destination": "/index.html" }
   ]
 }
