@@ -11,6 +11,7 @@
     { "source": "/update-password", "destination": "/update-password.html" },
     { "source": "/dev-settings", "destination": "/dev-settings.html" },
     { "source": "/maontenance", "destination": "/maintenance.html" },
+    { "source": "/banned", "destination": "/banned.html" },
     { "source": "/", "destination": "/index.html" }
   ]
 }
