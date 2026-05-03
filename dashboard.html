@@ -25,13 +25,11 @@
 
         <div id="message" class="message"></div>
 
-        <!-- Admin Panel: Approve User -->
         <div id="adminPanel" class="card" style="display:none;">
             <h3>Panel Admin - Approve Pengguna</h3>
             <div id="pendingUsersList"></div>
         </div>
 
-        <!-- Create Post -->
         <div class="card">
             <h3>Buat Post Baru</h3>
             <form id="postForm">
@@ -47,7 +45,6 @@
             </form>
         </div>
 
-        <!-- List Posts -->
         <div class="card">
             <h3>Semua Posts</h3>
             <div id="postsList"></div>
@@ -57,28 +54,17 @@
     <script>
         let currentUser = null;
 
-        // WAJIB: Force fetch fresh profile setiap kali load
-        async function loadUser() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) return window.location.href = '/login';
-
-            const { data: profile, error } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
-
-            if (error || !profile) {
-                await supabaseClient.auth.signOut();
+        async function init() {
+            const profile = await getProfile();
+            
+            if (!profile) {
                 window.location.href = '/login';
                 return;
             }
 
-            // Double check status dari DB
             if (profile.status !== 'approved') {
-                showMessage('Akaun anda belum approved.', 'error');
-                await supabaseClient.auth.signOut();
-                setTimeout(() => window.location.href = '/login', 2000);
+                showMessage('Akaun belum approved. Sila logout.', 'error');
+                setTimeout(logout, 2000);
                 return;
             }
 
@@ -86,7 +72,6 @@
             document.getElementById('userName').textContent = profile.full_name || 'User';
             document.getElementById('userRole').textContent = profile.role.toUpperCase();
             
-            // Show admin panel kalau dev/admin
             if (profile.role === 'dev' || profile.role === 'admin') {
                 document.getElementById('adminPanel').style.display = 'block';
                 loadPendingUsers();
@@ -95,55 +80,48 @@
             loadPosts();
         }
 
-        // Load pending users untuk approve
         async function loadPendingUsers() {
-            const { data, error } = await supabaseClient
+            const { data } = await supabaseClient
                 .from('profiles')
                 .select('id, full_name, created_at')
                 .eq('status', 'pending')
                 .order('created_at', { ascending: true });
 
             const list = document.getElementById('pendingUsersList');
-            if (error || !data || data.length === 0) {
+            if (!data || data.length === 0) {
                 list.innerHTML = '<p>Tiada user pending.</p>';
                 return;
             }
 
             list.innerHTML = data.map(user => `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border-bottom:1px solid #eee;">
-                    <div>
-                        <strong>${user.full_name || 'No Name'}</strong><br>
-                        <small>${new Date(user.created_at).toLocaleString()}</small>
-                    </div>
+                    <div><strong>${user.full_name || 'No Name'}</strong></div>
                     <button onclick="approveUser('${user.id}')">Approve</button>
                 </div>
             `).join('');
         }
 
-        // Approve user
         async function approveUser(userId) {
             const { error } = await supabaseClient
                 .from('profiles')
                 .update({ status: 'approved' })
                 .eq('id', userId);
 
-            if (error) {
-                showMessage('Gagal approve: ' + error.message, 'error');
-            } else {
+            if (error) showMessage('Gagal: ' + error.message, 'error');
+            else {
                 showMessage('User approved!', 'success');
                 loadPendingUsers();
             }
         }
 
-        // Load semua posts
         async function loadPosts() {
-            const { data, error } = await supabaseClient
+            const { data } = await supabaseClient
                 .from('posts')
                 .select('*, profiles(full_name)')
                 .order('created_at', { ascending: false });
 
             const list = document.getElementById('postsList');
-            if (error || !data || data.length === 0) {
+            if (!data || data.length === 0) {
                 list.innerHTML = '<p>Belum ada post.</p>';
                 return;
             }
@@ -152,50 +130,35 @@
                 <div class="post-item">
                     <div class="post-title">${post.title}</div>
                     <div class="post-content">${post.content}</div>
-                    <div class="post-meta">
-                        Oleh: ${post.profiles?.full_name || 'Unknown'} | 
-                        ${new Date(post.created_at).toLocaleString()}
-                    </div>
+                    <div class="post-meta">Oleh: ${post.profiles?.full_name || 'Unknown'}</div>
                 </div>
             `).join('');
         }
 
-        // Create post baru
         document.getElementById('postForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('postBtn');
-            btn.disabled = true;
-
-            const title = document.getElementById('postTitle').value;
-            const content = document.getElementById('postContent').value;
-
             const { error } = await supabaseClient
                 .from('posts')
                 .insert([{ 
-                    title, 
-                    content, 
+                    title: document.getElementById('postTitle').value, 
+                    content: document.getElementById('postContent').value, 
                     user_id: currentUser.id 
                 }]);
 
-            if (error) {
-                showMessage('Gagal post: ' + error.message, 'error');
-            } else {
+            if (error) showMessage('Gagal: ' + error.message, 'error');
+            else {
                 showMessage('Post berjaya!', 'success');
                 document.getElementById('postForm').reset();
                 loadPosts();
             }
-
-            btn.disabled = false;
         });
 
-        // Logout
         async function logout() {
             await supabaseClient.auth.signOut();
             window.location.href = '/login';
         }
 
-        // Init
-        document.addEventListener('DOMContentLoaded', loadUser);
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
