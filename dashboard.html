@@ -112,8 +112,8 @@
 
         async function loadUserCount() {
             const { count } = await supabaseClient
-              .from('profiles')
-              .select('*', { count: 'exact', head: true });
+             .from('profiles')
+             .select('*', { count: 'exact', head: true });
             document.getElementById('totalUsers').textContent = count || 0;
         }
 
@@ -127,9 +127,9 @@
 
         async function loadUsers() {
             const { data, error } = await supabaseClient
-              .from('profiles')
-              .select('*')
-              .order('created_at', { ascending: false });
+             .from('profiles')
+             .select('*')
+             .order('created_at', { ascending: false });
 
             if (error) return showMessage(error.message, 'error');
             allUsers = data;
@@ -156,7 +156,6 @@
                                 ${user.status.toUpperCase()}
                             </div>
                         </div>
-                    </div>
                     ${user.status === 'pending' && currentUser.profile.role === 'dev'? `
                         <div style="margin-top: 12px; display: flex; gap: 8px;">
                             <button class="success" onclick="approveUser('${user.id}')" style="flex: 1; margin: 0; padding: 8px;">✓ Approve</button>
@@ -187,13 +186,13 @@
 
         async function approveUser(id) {
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ status: 'approved' })
-              .eq('id', id);
+             .from('profiles')
+             .update({ status: 'approved' })
+             .eq('id', id);
 
             if (error) showMessage(error.message, 'error');
             else {
-                showMessage('User approved!', 'success');
+                showMessage('User approved! Suruh user logout & login balik.', 'success');
                 loadUsers();
                 loadStats();
             }
@@ -212,9 +211,9 @@
 
         async function changeRole(id, newRole) {
             const { error } = await supabaseClient
-              .from('profiles')
-              .update({ role: newRole })
-              .eq('id', id);
+             .from('profiles')
+             .update({ role: newRole })
+             .eq('id', id);
 
             if (error) showMessage(error.message, 'error');
             else {
