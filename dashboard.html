@@ -13,8 +13,8 @@
         <div class="dashboard-header">
             <div>
                 <h1>Dashboard</h1>
-                <p>Selamat datang, <span id="userName">...</span>! 
-                   <span class="badge" id="userRole">...</span>
+                <p>Selamat datang, <span id="userName">Loading...</span>! 
+                   <span class="badge" id="userRole"></span>
                 </p>
             </div>
             <div>
@@ -35,11 +35,11 @@
             <form id="postForm">
                 <div class="input-group">
                     <label>Title</label>
-                    <input type="text" id="title" required>
+                    <input type="text" id="postTitle" required>
                 </div>
                 <div class="input-group">
                     <label>Content</label>
-                    <textarea id="content" required></textarea>
+                    <textarea id="postContent" required></textarea>
                 </div>
                 <button type="submit">Post</button>
             </form>
@@ -47,50 +47,54 @@
 
         <div class="card">
             <h3>Semua Posts</h3>
-            <div id="posts"></div>
+            <div id="postsList">Loading...</div>
         </div>
     </div>
 
     <script>
-        let user = null;
+        let currentUser = null;
 
-        // Load sekali je masa mula
-        (async () => {
-            const { data: { user: authUser } } = await supabaseClient.auth.getUser();
-            if (!authUser) return window.location.replace('/login');
+        async function init() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) throw new Error('Not logged in');
 
-            const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('id', authUser.id)
-                .maybeSingle();
+                const { data: profile, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .maybeSingle();
 
-            if (profile?.status !== 'approved') {
-                await supabaseClient.auth.signOut();
-                return window.location.replace('/login');
+                if (error) throw error;
+                if (!profile || profile.status !== 'approved') {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Not approved');
+                }
+
+                currentUser = profile;
+                document.getElementById('userName').textContent = profile.full_name || 'User';
+                document.getElementById('userRole').textContent = profile.role.toUpperCase();
+                
+                if (profile.role === 'dev' || profile.role === 'admin') {
+                    document.getElementById('adminPanel').style.display = 'block';
+                    loadPending();
+                }
+                loadPosts();
+            } catch (err) {
+                window.location.replace('/login');
             }
-
-            user = profile;
-            userName.textContent = user.full_name || 'User';
-            userRole.textContent = user.role.toUpperCase();
-            
-            if (user.role === 'dev' || user.role === 'admin') {
-                adminPanel.style.display = 'block';
-                loadPending();
-            }
-            loadPosts();
-        })();
+        }
 
         async function loadPending() {
             const { data } = await supabaseClient.from('profiles').select('id, full_name').eq('status', 'pending');
-            pendingList.innerHTML = !data?.length ? '<p>Tiada pending</p>' : 
+            document.getElementById('pendingList').innerHTML = !data?.length ? '<p>Tiada pending</p>' : 
                 data.map(u => `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee">
-                    <span>${u.full_name}</span>
-                    <button onclick="approve('${u.id}')">Approve</button>
+                    <span>${u.full_name || 'No Name'}</span>
+                    <button onclick="approveUser('${u.id}')">Approve</button>
                 </div>`).join('');
         }
 
-        async function approve(id) {
+        async function approveUser(id) {
             await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', id);
             showMessage('Approved!', 'success');
             loadPending();
@@ -98,13 +102,17 @@
 
         async function loadPosts() {
             const { data } = await supabaseClient.from('posts').select('*, profiles(full_name)').order('created_at', { ascending: false });
-            posts.innerHTML = !data?.length ? '<p>Tiada post</p>' : 
+            document.getElementById('postsList').innerHTML = !data?.length ? '<p>Tiada post</p>' : 
                 data.map(p => `<div class="post-item"><div class="post-title">${p.title}</div><div class="post-content">${p.content}</div><div class="post-meta">Oleh: ${p.profiles?.full_name || 'Unknown'}</div></div>`).join('');
         }
 
-        postForm.addEventListener('submit', async (e) => {
+        document.getElementById('postForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            await supabaseClient.from('posts').insert([{ title: title.value, content: content.value, user_id: user.id }]);
+            await supabaseClient.from('posts').insert([{ 
+                title: document.getElementById('postTitle').value, 
+                content: document.getElementById('postContent').value, 
+                user_id: currentUser.id 
+            }]);
             showMessage('Posted!', 'success');
             e.target.reset();
             loadPosts();
@@ -114,6 +122,8 @@
             await supabaseClient.auth.signOut();
             window.location.replace('/login');
         }
+
+        init();
     </script>
 </body>
 </html>
