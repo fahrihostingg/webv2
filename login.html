@@ -30,67 +30,55 @@
         </div>
     </div>
 
-
-<script>
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('loginBtn');
-        btn.disabled = true;
-        btn.textContent = 'Login...';
-
-        try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-                email: document.getElementById('email').value,
-                password: document.getElementById('password').value
-            });
-            if (error) throw error;
-
-            // Query profile dengan error handling lengkap
-            const { data: profile, error: pError } = await supabaseClient
-                .from('profiles')
-                .select('status, role, full_name')
-                .eq('id', data.user.id)
-                .maybeSingle();
-
-            if (pError) {
-                console.error('Profile Error:', pError);
-                await supabaseClient.auth.signOut();
-                throw new Error('RLS Error: ' + pError.message);
-            }
-            
-            // Kalau profile tak wujud, auto create
-            if (!profile) {
-                const { error: insertError } = await supabaseClient
-                    .from('profiles')
-                    .insert({ 
-                        id: data.user.id, 
-                        full_name: data.user.user_metadata?.full_name || 'User',
-                        role: 'user', 
-                        status: 'pending' 
-                    });
-                
-                if (insertError) throw new Error('Gagal buat profile: ' + insertError.message);
-                
-                await supabaseClient.auth.signOut();
-                throw new Error('Profile baru dibuat. Tunggu admin approve.');
-            }
-            
-            if (profile.status === 'approved') {
+    <script>
+        // Kalau dah login, skip terus
+        (async () => {
+            const { ok, profile } = await checkAuth();
+            if (ok) {
                 if (profile.role === 'dev' || profile.role === 'admin') {
                     window.location.replace('/admin');
                 } else {
                     window.location.replace('/dashboard');
                 }
-            } else {
-                await supabaseClient.auth.signOut();
-                throw new Error('Akaun masih pending approval');
             }
-        } catch (err) {
-            showMessage(err.message, 'error');
-            btn.disabled = false;
-            btn.textContent = 'Login';
-        }
-    });
-</script>
+        })();
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('loginBtn');
+            btn.disabled = true;
+            btn.textContent = 'Login...';
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                });
+                if (error) throw error;
+
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('status, role')
+                    .eq('id', data.user.id)
+                    .maybeSingle();
+
+                if (!profile) throw new Error('Profile tak wujud');
+                if (profile.status !== 'approved') {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Akaun masih pending');
+                }
+
+                if (profile.role === 'dev' || profile.role === 'admin') {
+                    window.location.replace('/admin');
+                } else {
+                    window.location.replace('/dashboard');
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Login';
+            }
+        });
+    </script>
 </body>
 </html>
