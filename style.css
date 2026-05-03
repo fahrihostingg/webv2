@@ -19,8 +19,7 @@ body {
     overflow: hidden;
 }
 
-.container.wide { max-width: 900px; }
-
+.container.wide { max-width: 1000px; }
 .content { padding: 32px; }
 
 h2 { margin-bottom: 24px; color: #212529; font-size: 24px; }
@@ -50,6 +49,11 @@ input, textarea, select {
 input:focus, textarea:focus, select:focus {
     outline: none;
     border-color: #667eea;
+}
+
+input:disabled, textarea:disabled {
+    background: #e9ecef;
+    cursor: not-allowed;
 }
 
 textarea { resize: vertical; }
@@ -162,6 +166,7 @@ button.success { background: #28a745; }
     margin-bottom: 16px;
 }
 
+.badge.dev { background: #ff6b6b; color: white; }
 .badge.admin { background: #ffd43b; color: #664d03; }
 .badge.user { background: #d0ebff; color: #1864ab; }
 
@@ -214,3 +219,29 @@ button.success { background: #28a745; }
 .post-card h4 { margin-bottom: 8px; }
 .post-card p { color: #495057; margin-bottom: 8px; white-space: pre-wrap; }
 .post-meta { font-size: 12px; color: #adb5bd; }
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #6c757d;
+}
