@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Pahri v1.6.2</title>
+    <title>Admin Panel - Pahri v1.7.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -21,7 +21,7 @@
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>🔧 Pahri Admin Panel</h1>
+                <h1>🔧 Pahri Admin Panel <span id="roleTag"></span></h1>
                 <p id="adminWelcome">Loading...</p>
             </div>
             <div>
@@ -34,81 +34,178 @@
             </div>
         </div>
 
-        <div class="stats" id="statsContainer">
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-        </div>
-
-        <div class="card" id="pendingSection" style="border: 4px solid var(--warning); display: none;">
-            <h3>⏳ Pending Approval <span id="pendingCount" class="badge badge-pending">0</span></h3>
-            <p style="color: var(--text-light); margin-bottom: 20px;">User baru yang tunggu approval kau.</p>
-            <div id="pendingUsersList"></div>
-        </div>
-
-        <div class="card">
-            <h3>📈 User Growth Analytics - Real Data</h3>
-            <canvas id="userChart" style="max-height: 300px;"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>📋 Activity Logs - Real Time <button class="btn-secondary" onclick="loadActivityLogs()" style="float:right;">🔄 Refresh</button></h3>
-            <div style="max-height: 400px; overflow-y: auto;">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <thead style="position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
-                        <tr style="border-bottom: 2px solid var(--primary);">
-                            <th style="padding: 12px; text-align: left;">User</th>
-                            <th style="padding: 12px; text-align: left;">Action</th>
-                            <th style="padding: 12px; text-align: left;">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="activityLogs">
-                        <tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">Loading...</td></tr>
-                    </tbody>
-                </table>
+        <!-- TAB NAVIGATION - DEV ONLY -->
+        <div class="card" id="devTabs" style="display:none; padding: 0; overflow: hidden;">
+            <div style="display: flex; background: var(--bg); border-bottom: 2px solid var(--border);">
+                <button class="tab-btn active" onclick="switchTab('users')" id="tabUsers">
+                    👥 Users
+                </button>
+                <button class="tab-btn" onclick="switchTab('logs')">
+                    📋 Logs
+                </button>
+                <button class="tab-btn" onclick="switchTab('settings')">
+                    ⚙️ System
+                </button>
+                <button class="tab-btn" onclick="switchTab('dev')">
+                    💻 Dev Tools
+                </button>
             </div>
         </div>
 
-        <div class="card">
-            <h3>🔍 Search & Filter All Users <span id="totalUsersDisplay"></span></h3>
-            <div class="search-bar">
-                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau email..." oninput="filterUsers()">
-                <select id="roleFilter" class="filter-select" onchange="filterUsers()">
-                    <option value="all">Semua Role</option>
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                    <option value="dev">Dev</option>
-                </select>
-                <select id="statusFilter" class="filter-select" onchange="filterUsers()">
-                    <option value="all">Semua Status</option>
-                    <option value="pending">⏳ Pending</option>
-                    <option value="approved">✅ Approved</option>
-                    <option value="rejected">❌ Rejected</option>
-                </select>
-                <button class="btn-export" onclick="exportUsers()">📥 Export CSV</button>
-                <button class="btn-secondary" onclick="loadUsers()">🔄 Refresh</button>
+        <!-- TAB 1: USERS - Admin + Dev -->
+        <div id="tabContent-users" class="tab-content">
+            <div class="stats" id="statsContainer">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
             </div>
 
-            <div class="bulk-actions" id="bulkActions">
-                <span><strong id="selectedCount">0</strong> user dipilih</span>
-                <div>
-                    <button onclick="bulkApprove()">✅ Approve All</button>
-                    <button onclick="bulkReject()">❌ Reject All</button>
-                    <button onclick="bulkDelete()">🗑️ Delete All</button>
-                    <button onclick="clearSelection()">✖️ Clear</button>
+            <div class="card" id="pendingSection" style="border: 4px solid var(--warning); display: none;">
+                <h3>⏳ Pending Approval <span id="pendingCount" class="badge badge-pending">0</span></h3>
+                <p style="color: var(--text-light); margin-bottom: 20px;">User baru yang tunggu approval kau.</p>
+                <div id="pendingUsersList"></div>
+            </div>
+
+            <div class="card">
+                <h3>📈 User Growth Analytics - Real Data</h3>
+                <canvas id="userChart" style="max-height: 300px;"></canvas>
+            </div>
+
+            <div class="card">
+                <h3>🔍 Search & Filter All Users <span id="totalUsersDisplay"></span></h3>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau email..." oninput="filterUsers()">
+                    <select id="roleFilter" class="filter-select" onchange="filterUsers()">
+                        <option value="all">Semua Role</option>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <option value="dev">Dev</option>
+                    </select>
+                    <select id="statusFilter" class="filter-select" onchange="filterUsers()">
+                        <option value="all">Semua Status</option>
+                        <option value="pending">⏳ Pending</option>
+                        <option value="approved">✅ Approved</option>
+                        <option value="rejected">❌ Rejected</option>
+                    </select>
+                    <select id="bannedFilter" class="filter-select" onchange="filterUsers()">
+                        <option value="all">Semua</option>
+                        <option value="banned">🚫 Banned Only</option>
+                        <option value="active">✅ Active Only</option>
+                    </select>
+                    <button class="btn-export" onclick="exportUsers()">📥 Export CSV</button>
+                    <button class="btn-secondary" onclick="loadUsers()">🔄 Refresh</button>
+                </div>
+
+                <div class="bulk-actions" id="bulkActions">
+                    <span><strong id="selectedCount">0</strong> user dipilih</span>
+                    <div>
+                        <button onclick="bulkApprove()">✅ Approve All</button>
+                        <button onclick="bulkReject()">❌ Reject All</button>
+                        <button onclick="bulkBan()">🚫 Ban All</button>
+                        <button onclick="bulkDelete()">🗑️ Delete All</button>
+                        <button onclick="clearSelection()">✖️ Clear</button>
+                    </div>
+                </div>
+
+                <div id="usersList">
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
                 </div>
             </div>
+        </div>
 
-            <div id="usersList">
-                <div class="skeleton skeleton-card"></div>
-                <div class="skeleton skeleton-card"></div>
+        <!-- TAB 2: LOGS - Admin + Dev -->
+        <div id="tabContent-logs" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>📋 Activity Logs - Real Time 
+                    <button class="btn-secondary" onclick="loadActivityLogs()" style="float:right;">🔄 Refresh</button>
+                </h3>
+                <div style="max-height: 600px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
+                            <tr style="border-bottom: 2px solid var(--primary);">
+                                <th style="padding: 12px; text-align: left;">User</th>
+                                <th style="padding: 12px; text-align: left;">Action</th>
+                                <th style="padding: 12px; text-align: left;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityLogs">
+                            <tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: SETTINGS - DEV ONLY -->
+        <div id="tabContent-settings" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>🔧 System Settings</h3>
+                <div class="form-group">
+                    <label>Site Name</label>
+                    <input type="text" id="siteName" placeholder="Pahri Platform">
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="maintenanceMode">
+                    <label for="maintenanceMode">Maintenance Mode - Block semua user</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="registrationEnabled">
+                    <label for="registrationEnabled">Allow New Registrations</label>
+                </div>
+                <div class="form-group">
+                    <label>Max Users</label>
+                    <input type="number" id="maxUsers" placeholder="1000">
+                </div>
+                <div class="form-group">
+                    <label>Announcement (shown to all users)</label>
+                    <textarea id="announcement" rows="3" placeholder="System update..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+            </div>
+
+            <div class="card">
+                <h3>📢 Send Announcement to All Users</h3>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="notifTitle" placeholder="System Maintenance">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="notifMessage" rows="3" placeholder="Server akan down..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="sendAnnouncement()">📤 Send to All Users</button>
+            </div>
+        </div>
+
+        <!-- TAB 4: DEV TOOLS - DEV ONLY -->
+        <div id="tabContent-dev" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>💻 Dev Tools - DANGEROUS</h3>
+                <button class="btn-secondary" onclick="exportDatabase()" style="margin-bottom: 10px; width: 100%;">
+                    📥 Export All Users CSV
+                </button>
+                <button class="btn-secondary" onclick="forceLogoutAll()" style="margin-bottom: 10px; width: 100%;">
+                    🚪 Force Logout All Users
+                </button>
+                <button class="btn-secondary" onclick="clearAllLogs()" style="margin-bottom: 10px; width: 100%;">
+                    🗑️ Clear All Activity Logs
+                </button>
+                <button onclick="nukeDatabase()" style="background: var(--error); color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    ☢️ NUKE DATABASE (Delete All Users)
+                </button>
+            </div>
+
+            <div class="card">
+                <h3>📊 Database Stats</h3>
+                <div id="dbStats">Loading...</div>
             </div>
         </div>
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.6.2
+        <span class="dot"></span>v1.7.0
     </div>
 
     <div id="toastContainer"></div>
@@ -147,16 +244,44 @@
             showToast('Tema ditukar!', 'success');
         }
 
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tabContent-' + tab).style.display = 'block';
+            event.target.classList.add('active');
+
+            if (tab === 'logs') loadActivityLogs();
+            if (tab === 'settings' || tab === 'dev') loadSystemSettings();
+        }
+
         (async () => {
-            const auth = await checkAuth('admin');
-            if (!auth.ok) {
-                showToast(auth.msg, 'error');
-                setTimeout(() => window.location.replace(auth.redirect), 1500);
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.replace('/login');
                 return;
             }
 
-            currentAdmin = auth.profile;
+            const { data: profile } = await supabaseClient
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+            if (!profile || (profile.role!== 'admin' && profile.role!== 'dev')) {
+                showToast('Access denied', 'error');
+                setTimeout(() => window.location.replace('/dashboard'), 1500);
+                return;
+            }
+
+            currentAdmin = profile;
             document.getElementById('adminWelcome').textContent = `Welcome, ${currentAdmin.full_name || currentAdmin.email}`;
+            document.getElementById('roleTag').innerHTML = `<span class="badge badge-${currentAdmin.role}">${currentAdmin.role.toUpperCase()}</span>`;
+
+            // Show dev tabs kalau DEV
+            if (currentAdmin.role === 'dev') {
+                document.getElementById('devTabs').style.display = 'block';
+            }
 
             await loadStats();
             await loadUsers();
@@ -165,23 +290,23 @@
 
         async function loadStats() {
             const { count: totalUsers } = await supabaseClient
-          .from('profiles')
-          .select('*', { count: 'exact', head: true });
+         .from('profiles')
+         .select('*', { count: 'exact', head: true });
 
             const { count: pendingCount } = await supabaseClient
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
+         .from('profiles')
+         .select('*', { count: 'exact', head: true })
+         .eq('status', 'pending');
 
             const { count: adminCount } = await supabaseClient
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('role', 'admin');
+         .from('profiles')
+         .select('*', { count: 'exact', head: true })
+         .in('role', ['admin', 'dev']);
 
-            const { count: approvedCount } = await supabaseClient
-          .from('profiles')
-          .select('*', { count: 'exact', head: true })
-          .eq('status', 'approved');
+            const { count: bannedCount } = await supabaseClient
+         .from('profiles')
+         .select('*', { count: 'exact', head: true })
+         .eq('is_banned', true);
 
             document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
@@ -194,11 +319,11 @@
                 </div>
                 <div class="stat-box">
                     <h3>${adminCount || 0}</h3>
-                    <p>👑 Admins</p>
+                    <p>👑 Admins + Devs</p>
                 </div>
-                <div class="stat-box">
-                    <h3>${approvedCount || 0}</h3>
-                    <p>✅ Approved</p>
+                <div class="stat-box" style="border: 3px solid var(--error);">
+                    <h3>${bannedCount || 0}</h3>
+                    <p>🚫 Banned</p>
                 </div>
             `;
         }
@@ -206,20 +331,19 @@
         async function initChart() {
             const ctx = document.getElementById('userChart');
             
-            const { data: users, error } = await supabaseClient
-          .from('profiles')
-          .select('created_at, status')
-          .order('created_at', { ascending: true });
+            const { data: users } = await supabaseClient
+         .from('profiles')
+         .select('created_at, status')
+         .order('created_at', { ascending: true });
 
-            if (error ||!users || users.length === 0) {
+            if (!users || users.length === 0) {
                 ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
                 return;
             }
 
             const months = [];
             const userCounts = [];
-            const pendingCounts = [];
-            const approvedCounts = [];
+            const bannedCounts = [];
             
             for (let i = 5; i >= 0; i--) {
                 const date = new Date();
@@ -236,8 +360,6 @@
                 });
                 
                 userCounts.push(monthUsers.length);
-                pendingCounts.push(monthUsers.filter(u => u.status === 'pending').length);
-                approvedCounts.push(monthUsers.filter(u => u.status === 'approved').length);
             }
 
             if (window.userChartInstance) {
@@ -245,66 +367,36 @@
             }
 
             window.userChartInstance = new Chart(ctx, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: months,
-                    datasets: [
-                        {
-                            label: 'Total Users',
-                            data: userCounts,
-                            backgroundColor: 'rgba(102,126,234,0.8)',
-                            borderRadius: 8,
-                            borderWidth: 0
-                        },
-                        {
-                            label: 'Approved',
-                            data: approvedCounts,
-                            backgroundColor: 'rgba(34,197,94,0.8)',
-                            borderRadius: 8,
-                            borderWidth: 0
-                        },
-                        {
-                            label: 'Pending',
-                            data: pendingCounts,
-                            backgroundColor: 'rgba(251,191,36,0.8)',
-                            borderRadius: 8,
-                            borderWidth: 0
-                        }
-                    ]
+                    datasets: [{
+                        label: 'New Users',
+                        data: userCounts,
+                        borderColor: 'rgba(102,126,234,1)',
+                        backgroundColor: 'rgba(102,126,234,0.2)',
+                        tension: 0.4,
+                        fill: true
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: true,
-                            position: 'top',
-                            labels: { usePointStyle: true, padding: 15, font: { size: 12 } }
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0,0,0,0.8)',
-                            padding: 12
-                        }
-                    },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 11 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
-                        x: { grid: { display: false }, ticks: { font: { size: 11 } } }
-                    }
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
 
         async function loadActivityLogs() {
-            const { data: logs, error } = await supabaseClient
-             .from('activity_logs')
-             .select('*, profiles(full_name, email)')
-             .order('created_at', { ascending: false })
-             .limit(50);
+            const { data: logs } = await supabaseClient
+            .from('activity_logs')
+            .select('*, profiles(full_name, email)')
+            .order('created_at', { ascending: false })
+            .limit(100);
 
             const tbody = document.getElementById('activityLogs');
-            if (error ||!logs || logs.length === 0) {
+            if (!logs || logs.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">No activity yet</td></tr>';
                 return;
             }
@@ -336,9 +428,9 @@
 
         async function loadUsers() {
             const { data: users, error } = await supabaseClient
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
+         .from('profiles')
+         .select('*')
+         .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
@@ -372,9 +464,7 @@
                         <span class="badge badge-${user.role}">${user.role}</span>
                         <span class="badge badge-pending">PENDING</span>
                         <small style="display: block; margin-top: 5px; color: #999;">
-                            Register: ${new Date(user.created_at).toLocaleDateString('id-ID', {
-                                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                            })}
+                            Register: ${new Date(user.created_at).toLocaleDateString('id-ID')}
                         </small>
                     </div>
                     <div class="user-actions">
@@ -396,38 +486,45 @@
             list.innerHTML = users.map(user => {
                 const isCurrentUser = user.id === currentAdmin.id;
                 const isDev = user.role === 'dev';
+                const isBanned = user.is_banned;
                 const lastActive = user.last_active 
-                  ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                     : 'Never';
                 
                 return `
-                <div class="user-card">
+                <div class="user-card" style="${isBanned? 'border-color: var(--error); background: #fef2f2;' : ''}">
                     <input type="checkbox" class="user-checkbox"
                            value="${user.id}"
                            ${selectedUsers.has(user.id)? 'checked' : ''}
                            ${isCurrentUser || isDev? 'disabled title="Cannot select"' : ''}
                            onchange="toggleUserSelection('${user.id}')">
                     <div class="user-info">
-                        <strong>${user.full_name || 'No Name'} ${isCurrentUser? '(You)' : ''}</strong>
+                        <strong>${user.full_name || 'No Name'} ${isCurrentUser? '(You)' : ''} ${isBanned? '🚫 BANNED' : ''}</strong>
                         <small>${user.email}</small>
                         <span class="badge badge-${user.role}">${user.role}</span>
                         <span class="badge badge-${user.status}">${user.status}</span>
+                        ${isBanned? `<span class="badge" style="background:#fee2e2;color:#991b1b;">BANNED</span>` : ''}
                         <small style="display: block; margin-top: 3px; color: #999;">
                             Last: ${lastActive} | Login: ${user.login_count || 0}x
                         </small>
+                        ${isBanned && user.banned_reason? `<small style="color:var(--error);">Reason: ${user.banned_reason}</small>` : ''}
                     </div>
                     <div class="user-actions">
                         ${user.status === 'pending'? `
                             <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Approve</button>
                             <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Reject</button>
                         ` : ''}
-                        ${!isCurrentUser? `
-                            <select onchange="changeRole('${user.id}', this.value)" ${isDev? 'disabled title="Dev role protected"' : ''}>
+                        ${!isCurrentUser &&!isDev? `
+                            <select onchange="changeRole('${user.id}', this.value)">
                                 <option value="user" ${user.role === 'user'? 'selected' : ''}>User</option>
                                 <option value="admin" ${user.role === 'admin'? 'selected' : ''}>Admin</option>
-                                <option value="dev" ${user.role === 'dev'? 'selected' : ''}>Dev</option>
+                                ${currentAdmin.role === 'dev'? `<option value="dev" ${user.role === 'dev'? 'selected' : ''}>Dev</option>` : ''}
                             </select>
-                        ` : '<span style="font-size:12px;color:#999;">Current User</span>'}
+                            ${isBanned? 
+                                `<button onclick="unbanUser('${user.id}')" style="background:var(--success);color:white;">✅ Unban</button>` : 
+                                `<button onclick="banUser('${user.id}')" style="background:var(--error);color:white;">🚫 Ban</button>`
+                            }
+                        ` : ''}
                         ${isDev? '<span style="font-size:12px;color:#f59e0b;">🔒 Protected</span>' : ''}
                     </div>
                 </div>
@@ -438,13 +535,17 @@
             const search = document.getElementById('searchInput').value.toLowerCase();
             const roleFilter = document.getElementById('roleFilter').value;
             const statusFilter = document.getElementById('statusFilter').value;
+            const bannedFilter = document.getElementById('bannedFilter').value;
 
             const filtered = allUsers.filter(user => {
                 const matchSearch = user.email.toLowerCase().includes(search) ||
                                    (user.full_name || '').toLowerCase().includes(search);
                 const matchRole = roleFilter === 'all' || user.role === roleFilter;
                 const matchStatus = statusFilter === 'all' || user.status === statusFilter;
-                return matchSearch && matchRole && matchStatus;
+                const matchBanned = bannedFilter === 'all' || 
+                                   (bannedFilter === 'banned' && user.is_banned) ||
+                                   (bannedFilter === 'active' &&!user.is_banned);
+                return matchSearch && matchRole && matchStatus && matchBanned;
             });
 
             renderUsers(filtered);
@@ -479,13 +580,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-          .from('profiles')
-          .update({
+         .from('profiles')
+         .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-          .eq('id', userId);
+         .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -493,7 +594,6 @@
                 showToast('User approved! ✅', 'success');
                 await loadUsers();
                 await loadStats();
-                await loadActivityLogs();
             }
         }
 
@@ -501,9 +601,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-          .from('profiles')
-          .update({ status: 'rejected' })
-          .eq('id', userId);
+         .from('profiles')
+         .update({ status: 'rejected' })
+         .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -511,15 +611,14 @@
                 showToast('User rejected! ❌', 'success');
                 await loadUsers();
                 await loadStats();
-                await loadActivityLogs();
             }
         }
 
         async function changeRole(userId, newRole) {
             const user = allUsers.find(u => u.id === userId);
             
-            if (user.role === 'dev') {
-                showToast('❌ Role DEV tak boleh ditukar! Protected.', 'error');
+            if (user.role === 'dev' && currentAdmin.role!== 'dev') {
+                showToast('❌ Only DEV boleh tukar role DEV!', 'error');
                 loadUsers();
                 return;
             }
@@ -531,9 +630,9 @@
             }
 
             const { error } = await supabaseClient
-          .from('profiles')
-          .update({ role: newRole })
-          .eq('id', userId);
+         .from('profiles')
+         .update({ role: newRole })
+         .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -541,7 +640,51 @@
             } else {
                 showToast(`Role updated to ${newRole}! 🎭`, 'success');
                 await loadUsers();
-                await loadActivityLogs();
+            }
+        }
+
+        async function banUser(userId) {
+            const reason = prompt('Reason untuk ban user ni:');
+            if (!reason) return;
+
+            const { error } = await supabaseClient
+            .from('profiles')
+            .update({ 
+                    is_banned: true,
+                    banned_reason: reason,
+                    banned_at: new Date().toISOString(),
+                    banned_by: currentAdmin.id
+                })
+            .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User banned! 🚫', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function unbanUser(userId) {
+            if (!confirm('Unban user ni?')) return;
+
+            const { error } = await supabaseClient
+            .from('profiles')
+            .update({ 
+                    is_banned: false,
+                    banned_reason: null,
+                    banned_at: null,
+                    banned_by: null
+                })
+            .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User unbanned! ✅', 'success');
+                await loadUsers();
+                await loadStats();
             }
         }
 
@@ -550,13 +693,13 @@
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-          .from('profiles')
-          .update({
+         .from('profiles')
+         .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-          .in('id', Array.from(selectedUsers));
+         .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -565,7 +708,6 @@
                 clearSelection();
                 await loadUsers();
                 await loadStats();
-                await loadActivityLogs();
             }
         }
 
@@ -574,9 +716,9 @@
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
             const { error } = await supabaseClient
-          .from('profiles')
-          .update({ status: 'rejected' })
-          .in('id', Array.from(selectedUsers));
+         .from('profiles')
+         .update({ status: 'rejected' })
+         .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -585,7 +727,31 @@
                 clearSelection();
                 await loadUsers();
                 await loadStats();
-                await loadActivityLogs();
+            }
+        }
+
+        async function bulkBan() {
+            if (selectedUsers.size === 0) return;
+            const reason = prompt(`Reason untuk ban ${selectedUsers.size} users:`);
+            if (!reason) return;
+
+            const { error } = await supabaseClient
+         .from('profiles')
+         .update({ 
+                is_banned: true,
+                banned_reason: reason,
+                banned_at: new Date().toISOString(),
+                banned_by: currentAdmin.id
+            })
+         .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users banned! 🚫`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
             }
         }
 
@@ -594,9 +760,9 @@
             if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
             const { error } = await supabaseClient
-          .from('profiles')
-          .delete()
-          .in('id', Array.from(selectedUsers));
+         .from('profiles')
+         .delete()
+         .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -605,14 +771,13 @@
                 clearSelection();
                 await loadUsers();
                 await loadStats();
-                await loadActivityLogs();
             }
         }
 
         function exportUsers() {
             const csv = [
-                'Name,Email,Role,Status,Created,Last Active,Login Count',
-           ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
+                'Name,Email,Role,Status,Banned,Created,Last Active,Login Count',
+          ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -622,6 +787,139 @@
             a.download = `pahri_users_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
             showToast('Users exported! 📥', 'success');
+        }
+
+        // DEV SETTINGS FUNCTIONS
+        async function loadSystemSettings() {
+            const { data } = await supabaseClient
+            .from('system_settings')
+            .select('*')
+            .eq('id', 1)
+            .single();
+            
+            if (data) {
+                document.getElementById('siteName').value = data.site_name || '';
+                document.getElementById('maintenanceMode').checked = data.maintenance_mode;
+                document.getElementById('registrationEnabled').checked = data.registration_enabled;
+                document.getElementById('maxUsers').value = data.max_users || 1000;
+                document.getElementById('announcement').value = data.announcement || '';
+            }
+        }
+
+        async function saveSettings() {
+            const { error } = await supabaseClient
+            .from('system_settings')
+            .update({
+                    site_name: document.getElementById('siteName').value,
+                    maintenance_mode: document.getElementById('maintenanceMode').checked,
+                    registration_enabled: document.getElementById('registrationEnabled').checked,
+                    max_users: parseInt(document.getElementById('maxUsers').value),
+                    announcement: document.getElementById('announcement').value,
+                    updated_at: new Date().toISOString(),
+                    updated_by: currentAdmin.id
+                })
+            .eq('id', 1);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('✅ Settings saved!', 'success');
+            }
+        }
+
+        async function sendAnnouncement() {
+            const title = document.getElementById('notifTitle').value.trim();
+            const message = document.getElementById('notifMessage').value.trim();
+            
+            if (!title ||!message) {
+                showToast('Isi title & message!', 'error');
+                return;
+            }
+
+            if (!confirm(`Send announcement ke SEMUA user?`)) return;
+
+            const { data: users } = await supabaseClient.from('profiles').select('id');
+            
+            const notifications = users.map(u => ({
+                user_id: u.id,
+                title: title,
+                message: message,
+                type: 'info'
+            }));
+
+            const { error } = await supabaseClient.from('notifications').insert(notifications);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`📤 Announcement sent to ${users.length} users!`, 'success');
+                document.getElementById('notifTitle').value = '';
+                document.getElementById('notifMessage').value = '';
+            }
+        }
+
+        async function exportDatabase() {
+            const { data } = await supabaseClient.from('profiles').select('*');
+            const csv = [
+                'ID,Email,Name,Role,Status,Banned,Created,Last Active,Login Count,Avatar',
+               ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `database_backup_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Database exported!', 'success');
+        }
+
+        async function forceLogoutAll() {
+            if (!confirm('Force logout SEMUA user? Mereka kena login balik.')) return;
+            showToast('Feature perlu Supabase Edge Function. Coming v1.8.0', 'info');
+        }
+
+        async function clearAllLogs() {
+            if (!confirm('Delete SEMUA activity logs? Tak boleh undo!')) return;
+            
+            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('🗑️ All logs cleared!', 'success');
+                await loadActivityLogs();
+            }
+        }
+
+        async function nukeDatabase() {
+            const confirm1 = prompt('Type "DELETE ALL USERS" untuk confirm:');
+            if (confirm1!== 'DELETE ALL USERS') return;
+            
+            const confirm2 = prompt('Last warning! Type "I AM SURE" untuk nuke:');
+            if (confirm2!== 'I AM SURE') return;
+
+            const { error } = await supabaseClient.from('profiles').delete().neq('id', currentAdmin.id);
+            
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('☢️ Database nuked! All users deleted except you.', 'warning');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function loadSystemSettings() {
+            const { data } = await supabaseClient.from('system_settings').select('*').eq('id', 1).single();
+            
+            if (data) {
+                document.getElementById('siteName').value = data.site_name || '';
+                document.getElementById('maintenanceMode').checked = data.maintenance_mode;
+                document.getElementById('registrationEnabled').checked = data.registration_enabled;
+                document.getElementById('maxUsers').value = data.max_users || 1000;
+                document.getElementById('announcement').value = data.announcement || '';
+            }
         }
 
         async function logout() {
@@ -646,5 +944,35 @@
             setTimeout(() => toast.remove(), 3000);
         }
     </script>
+
+    <style>
+        .tab-btn {
+            padding: 15px 25px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-light);
+            transition: all 0.2s ease;
+        }
+        .tab-btn:hover {
+            background: var(--card-bg);
+            color: var(--text);
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: var(--card-bg);
+        }
+        .tab-content {
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </body>
 </html>
