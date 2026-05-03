@@ -3,21 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - Pahri Platform v1.5.5</title>
+    <title>Signup - Pahri Platform v1.6.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
 </head>
 <body class="auth-body">
     <div class="auth-container">
         <div class="auth-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.5</p>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.6.2</p>
             </div>
 
-            <h2 style="font-size: 20px;">Register Akaun Baru</h2>
-            <p style="font-size: 13px;">Akaun akan pending sampai admin approve</p>
+            <h2 style="font-size: 20px;">Daftar Akaun</h2>
+            <p style="font-size: 13px;">Buat akaun baru - tunggu admin approve</p>
 
             <div id="message" class="message" style="display:none;"></div>
 
@@ -32,15 +40,16 @@
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" placeholder="Min 6 karakter" required autocomplete="new-password" minlength="6">
+                    <input type="password" id="password" placeholder="Min 6 character" required autocomplete="new-password">
                 </div>
                 <div class="form-group">
                     <label>Confirm Password</label>
                     <input type="password" id="confirmPassword" placeholder="Ulang password" required autocomplete="new-password">
                 </div>
+
                 <button type="submit" class="btn-primary" id="signupBtn">
-                    <span id="btnText">Register Sekarang</span>
-                    <span id="btnLoading" style="display:none;">⏳ Creating...</span>
+                    <span id="btnText">Daftar Sekarang</span>
+                    <span id="btnLoading" style="display:none;">⏳ Loading...</span>
                 </button>
             </form>
 
@@ -51,16 +60,12 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.5.5
+        <span class="dot"></span>v1.6.2
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
-        }
-
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -72,13 +77,13 @@
             const btnLoading = document.getElementById('btnLoading');
             const signupBtn = document.getElementById('signupBtn');
 
-            if (password !== confirmPassword) {
+            if (password!== confirmPassword) {
                 showMessage('Password tak sama!', 'error');
                 return;
             }
 
             if (password.length < 6) {
-                showMessage('Password min 6 karakter!', 'error');
+                showMessage('Password min 6 character!', 'error');
                 return;
             }
 
@@ -86,7 +91,7 @@
             btnLoading.style.display = 'inline';
             signupBtn.disabled = true;
 
-            const { data, error } = await supabaseClient.auth.signUp({
+            const { data: authData, error: authError } = await supabaseClient.auth.signUp({
                 email: email,
                 password: password,
                 options: {
@@ -96,22 +101,15 @@
                 }
             });
 
-            if (error) {
-                console.error('Signup error:', error);
-                if (error.message.includes('already registered')) {
-                    showMessage('Email dah register. Cuba login.', 'error');
-                } else if (error.message.includes('password')) {
-                    showMessage('Password tak kuat. Guna huruf + nombor.', 'error');
-                } else {
-                    showMessage('Signup gagal: ' + error.message, 'error');
-                }
+            if (authError) {
+                showMessage('Error: ' + authError.message, 'error');
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 signupBtn.disabled = false;
                 return;
             }
 
-            showToast('✅ Register berjaya! Tunggu admin approve dulu.', 'success');
+            showToast('✅ Daftar berjaya! Tunggu admin approve.', 'success');
             setTimeout(() => window.location.replace('/login'), 2000);
         });
 
@@ -120,17 +118,15 @@
             msg.textContent = text;
             msg.className = 'message ' + type;
             msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 6000);
+            setTimeout(() => msg.style.display = 'none', 5000);
         }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
