@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Account Banned - Pahri v1.7.0</title>
+    <title>Account Banned - Pahri v1.7.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -24,15 +24,19 @@
             justify-content: center;
             padding: 20px;
         }
+        .banned-container {
+            max-width: 600px;
+            width: 100%;
+        }
         .banned-card {
             background: var(--card-bg);
-            padding: 60px 40px;
+            padding: 50px 40px;
             border-radius: 20px;
             box-shadow: var(--shadow-xl);
             text-align: center;
-            max-width: 500px;
             animation: shakeIn 0.6s ease;
             border: 4px solid var(--error);
+            margin-bottom: 20px;
         }
         @keyframes shakeIn {
             0% { opacity: 0; transform: translateX(-100px); }
@@ -60,47 +64,77 @@
             background: #7f1d1d;
             color: #fecaca;
         }
+        .appeal-card {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: var(--shadow-xl);
+            border: 2px solid var(--warning);
+        }
     </style>
 </head>
 <body>
-    <div class="banned-card">
-        <div class="banned-icon">🚫</div>
-        <h1 style="font-size: 28px; margin-bottom: 15px; color: var(--error);">Account Banned</h1>
-        <p style="color: var(--text-light); margin-bottom: 10px; font-size: 16px;">
-            Akaun kau telah disekat oleh admin
-        </p>
-        
-        <div class="banned-reason">
-            <strong style="color: var(--error);">📋 Reason:</strong>
-            <p id="banReason" style="margin: 8px 0 0 0; font-size: 14px;">Loading...</p>
-        </div>
-
-        <div style="background: var(--bg); padding: 16px; border-radius: 8px; margin: 20px 0;">
-            <p style="margin: 0; font-size: 13px; color: var(--text-light);">
-                <strong>Banned at:</strong> <span id="bannedAt">-</span><br>
-                <strong>Banned by:</strong> <span id="bannedBy">-</span>
+    <div class="banned-container">
+        <div class="banned-card">
+            <div class="banned-icon">🚫</div>
+            <h1 style="font-size: 28px; margin-bottom: 15px; color: var(--error);">Account Banned</h1>
+            <p style="color: var(--text-light); margin-bottom: 10px; font-size: 16px;">
+                Akaun kau telah disekat oleh admin
             </p>
+            
+            <div class="banned-reason">
+                <strong style="color: var(--error);">📋 Reason:</strong>
+                <p id="banReason" style="margin: 8px 0 0 0; font-size: 14px;">Loading...</p>
+            </div>
+
+            <div style="background: var(--bg); padding: 16px; border-radius: 8px; margin: 20px 0;">
+                <p style="margin: 0; font-size: 13px; color: var(--text-light);">
+                    <strong>Banned at:</strong> <span id="bannedAt">-</span><br>
+                    <strong>Banned by:</strong> <span id="bannedBy">-</span><br>
+                    <strong>Your Email:</strong> <span id="userEmail">-</span>
+                </p>
+            </div>
+
+            <button class="btn-primary" onclick="logout()" style="width: 100%;">
+                🚪 Logout
+            </button>
         </div>
 
-        <p style="color: var(--text-light); font-size: 14px; margin-bottom: 25px;">
-            Kalau rasa ini salah, contact admin untuk appeal
-        </p>
-
-        <button class="btn-secondary" onclick="contactAdmin()" style="margin-bottom: 10px; width: 100%;">
-            📧 Contact Admin
-        </button>
-        <button class="btn-primary" onclick="logout()" style="width: 100%;">
-            🚪 Logout
-        </button>
+        <div class="appeal-card">
+            <h3 style="margin-bottom: 15px;">📝 Appeal Ban</h3>
+            <p style="color: var(--text-light); font-size: 14px; margin-bottom: 20px;">
+                Kalau rasa ban ni salah, hantar appeal kat admin. Admin akan review.
+            </p>
+            
+            <div id="appealStatus"></div>
+            
+            <form id="appealForm" style="text-align: left;">
+                <div class="form-group">
+                    <label>Reason Kenapa Patut Unban</label>
+                    <textarea id="appealReason" rows="4" placeholder="Explain kenapa ban ni tak patut..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Contact Email</label>
+                    <input type="email" id="appealEmail" placeholder="Email untuk admin reply" required>
+                </div>
+                <button type="submit" class="btn-primary" id="appealBtn" style="width: 100%;">
+                    <span id="appealText">📤 Hantar Appeal</span>
+                    <span id="appealLoading" style="display:none;">⏳ Sending...</span>
+                </button>
+            </form>
+        </div>
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.7.0
+        <span class="dot"></span>v1.7.1
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
+        let currentUser = null;
+        let hasExistingAppeal = false;
+
         (async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             
@@ -126,25 +160,88 @@
                 return;
             }
 
+            currentUser = profile;
+
             // Display ban info
             document.getElementById('banReason').textContent = profile.banned_reason || 'No reason provided';
             document.getElementById('bannedAt').textContent = profile.banned_at 
                 ? new Date(profile.banned_at).toLocaleString('id-ID') 
                 : 'Unknown';
             document.getElementById('bannedBy').textContent = profile.banned_by?.full_name || profile.banned_by?.email || 'System';
+            document.getElementById('userEmail').textContent = profile.email;
+            document.getElementById('appealEmail').value = profile.email;
 
-            // Auto logout lepas 3 saat kalau tak nak stay
-            setTimeout(() => {
-                showToast('Auto logout dalam 10 saat...', 'warning');
-                setTimeout(() => logout(), 10000);
-            }, 3000);
+            // Check kalau dah ada appeal pending
+            await checkExistingAppeal();
         })();
 
-        function contactAdmin() {
-            const subject = 'Appeal Ban - Pahri Platform';
-            const body = `Hi Admin,%0D%0A%0D%0ASaya nak appeal ban akaun saya.%0D%0A%0D%0AEmail: ${currentUser?.email}%0D%0AReason: %0D%0A%0D%0ATerima kasih.`;
-            window.location.href = `mailto:admin@pahri.com?subject=${subject}&body=${body}`;
+        async function checkExistingAppeal() {
+            const { data } = await supabaseClient
+            .from('ban_appeals')
+            .select('*')
+            .eq('user_id', currentUser.id)
+            .eq('status', 'pending')
+            .single();
+
+            const statusDiv = document.getElementById('appealStatus');
+            const form = document.getElementById('appealForm');
+
+            if (data) {
+                hasExistingAppeal = true;
+                statusDiv.innerHTML = `
+                    <div style="background: #fffbf0; border-left: 4px solid var(--warning); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <strong style="color: var(--warning);">⏳ Appeal Pending</strong>
+                        <p style="margin: 8px 0 0 0; font-size: 13px; color: var(--text-light);">
+                            Kau dah submit appeal pada ${new Date(data.created_at).toLocaleString('id-ID')}. 
+                            Tunggu admin review.
+                        </p>
+                    </div>
+                `;
+                form.style.display = 'none';
+            }
         }
+
+        document.getElementById('appealForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (hasExistingAppeal) {
+                showToast('Kau dah ada appeal pending!', 'warning');
+                return;
+            }
+
+            const reason = document.getElementById('appealReason').value.trim();
+            const email = document.getElementById('appealEmail').value.trim();
+
+            if (!reason || !email) {
+                showToast('Isi semua field!', 'error');
+                return;
+            }
+
+            document.getElementById('appealText').style.display = 'none';
+            document.getElementById('appealLoading').style.display = 'inline';
+            document.getElementById('appealBtn').disabled = true;
+
+            const { error } = await supabaseClient
+            .from('ban_appeals')
+            .insert({
+                user_id: currentUser.id,
+                email: email,
+                reason: reason,
+                ban_reason: currentUser.banned_reason,
+                status: 'pending'
+            });
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+                document.getElementById('appealText').style.display = 'inline';
+                document.getElementById('appealLoading').style.display = 'none';
+                document.getElementById('appealBtn').disabled = false;
+            } else {
+                showToast('✅ Appeal berjaya dihantar! Admin akan review.', 'success');
+                document.getElementById('appealForm').reset();
+                await checkExistingAppeal();
+            }
+        });
 
         async function logout() {
             await supabaseClient.auth.signOut();
