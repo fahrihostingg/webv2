@@ -77,7 +77,19 @@ async function checkAuth(requiredRole = null, useCache = true) {
 
     return { ok: true, profile, user };
 }
+// Tambah kat paling bawah supabase.js
+function initTheme() {
+    const theme = localStorage.getItem('theme');
+    if (theme === 'dark') {
+        document.documentElement.classList.add('dark-mode');
+        document.body.classList.add('dark-mode');
+    }
+}
 
+// Call initTheme() kat semua page
+if (typeof window !== 'undefined') {
+    initTheme();
+}
 // Clear cache masa logout
 function clearCache() {
     profileCache = null;
