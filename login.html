@@ -31,31 +31,44 @@
     </div>
 
     <script>
+        // Redirect kalau dah login
+        (async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                const { data: profile } = await supabaseClient.from('profiles').select('status').eq('id', user.id).maybeSingle();
+                if (profile?.status === 'approved') window.location.replace('/dashboard');
+            }
+        })();
+
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('loginBtn');
             btn.disabled = true;
-            btn.textContent = 'Checking...';
+            btn.textContent = 'Login...';
 
             try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: document.getElementById('email').value,
                     password: document.getElementById('password').value
                 });
-
                 if (error) throw error;
 
-                btn.textContent = 'Loading profile...';
-                const { data: profile, error: profileError } = await supabaseClient
+                const { data: profile, error: pError } = await supabaseClient
                     .from('profiles')
-                    .select('status')
+                    .select('status, role')
                     .eq('id', data.user.id)
                     .maybeSingle();
 
-                if (profileError) throw profileError;
+                if (pError) throw new Error('Gagal baca profile');
+                if (!profile) throw new Error('Profile tak wujud');
                 
-                if (profile?.status === 'approved') {
-                    window.location.replace('/dashboard');
+                if (profile.status === 'approved') {
+                    // Kalau dev/admin, pergi admin page
+                    if (profile.role === 'dev' || profile.role === 'admin') {
+                        window.location.replace('/admin');
+                    } else {
+                        window.location.replace('/dashboard');
+                    }
                 } else {
                     await supabaseClient.auth.signOut();
                     throw new Error('Akaun masih pending approval');
