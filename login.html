@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - Pahri Platform v1.4.0</title>
+    <title>Login - Pahri Platform v1.5.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -12,13 +11,13 @@
 <body class="auth-body">
     <div class="auth-container">
         <div class="auth-card">
-            <div style="text-align: center; margin-bottom: 28px;">
-                <h1 style="font-size: 28px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 4px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.4.0 Enterprise</p>
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.1 Ultimate</p>
             </div>
-            
-            <h2 style="font-size: 19px;">Login Akaun</h2>
-            <p style="font-size: 13px;">Masuk ke dashboard admin</p>
+
+            <h2 style="font-size: 20px;">Login Akaun</h2>
+            <p style="font-size: 13px;">Masuk ke dashboard enterprise</p>
 
             <div id="message" class="message" style="display:none;"></div>
 
@@ -31,6 +30,10 @@
                     <label>Password</label>
                     <input type="password" id="password" placeholder="••••••••" required>
                 </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="rememberMe" style="width: auto;">
+                    <label for="rememberMe" style="margin: 0; font-weight: 500;">Remember me</label>
+                </div>
                 <button type="submit" class="btn-primary" id="loginBtn">
                     <span id="btnText">Login Sekarang</span>
                     <span id="btnLoading" style="display:none;">⏳ Loading...</span>
@@ -41,7 +44,11 @@
                 Belum ada akaun? <a href="/signup">Register sini</a>
             </div>
 
-            <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid #e8e8e8; text-align: center;">
+            <div class="auth-link">
+                <a href="#" onclick="forgotPassword()">Lupa password?</a>
+            </div>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; text-align: center;">
                 <p style="font-size: 11px; color: #999; margin: 0;">
                     Demo: devutama@pahri.local / adminutama@pahri.local<br>
                     Password: Pahri123! / Admin123!
@@ -51,7 +58,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.4.0
+        <span class="dot"></span>v1.5.1
     </div>
 
     <div id="toastContainer"></div>
@@ -61,16 +68,37 @@
             document.body.classList.add('dark-mode');
         }
 
+        // Auto-fill if remembered
+        const savedEmail = localStorage.getItem('pahri_email');
+        if (savedEmail) {
+            document.getElementById('email').value = savedEmail;
+            document.getElementById('rememberMe').checked = true;
+        }
+
         (async () => {
             const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) window.location.replace('/dashboard');
+            if (user) {
+                // Check status dulu sebelum redirect
+                const { data: profile } = await supabaseClient
+                    .from('profiles')
+                    .select('status')
+                    .eq('id', user.id)
+                    .single();
+                
+                if (profile?.status === 'approved') {
+                    window.location.replace('/dashboard');
+                } else {
+                    await supabaseClient.auth.signOut();
+                }
+            }
         })();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
+            const rememberMe = document.getElementById('rememberMe').checked;
             const btnText = document.getElementById('btnText');
             const btnLoading = document.getElementById('btnLoading');
             const loginBtn = document.getElementById('loginBtn');
@@ -92,14 +120,20 @@
                 return;
             }
 
+            if (rememberMe) {
+                localStorage.setItem('pahri_email', email);
+            } else {
+                localStorage.removeItem('pahri_email');
+            }
+
             const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('status, role')
-                .eq('id', data.user.id)
-                .single();
+               .from('profiles')
+               .select('status, role, full_name')
+               .eq('id', data.user.id)
+               .single();
 
             if (profile?.status === 'pending') {
-                showMessage('Akaun masih pending. Tunggu admin approve.', 'error');
+                showMessage('Akaun masih pending. Tunggu admin approve dulu.', 'error');
                 await supabaseClient.auth.signOut();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
@@ -108,7 +142,7 @@
             }
 
             if (profile?.status === 'rejected') {
-                showMessage('Akaun anda telah ditolak.', 'error');
+                showMessage('Akaun anda telah ditolak. Contact admin.', 'error');
                 await supabaseClient.auth.signOut();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
@@ -116,26 +150,41 @@
                 return;
             }
 
-            showToast('Login berjaya! Redirect...', 'success');
+            showToast(`Welcome back, ${profile.full_name || email}!`, 'success');
             setTimeout(() => window.location.replace('/dashboard'), 1000);
         });
+
+        async function forgotPassword() {
+            const email = prompt('Masukkan email untuk reset password:');
+            if (!email) return;
+
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + '/reset-password'
+            });
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('Email reset password dah hantar! Check inbox.', 'success');
+            }
+        }
 
         function showMessage(text, type) {
             const msg = document.getElementById('message');
             msg.textContent = text;
             msg.className = 'message ' + type;
             msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 5000);
+            setTimeout(() => msg.style.display = 'none', 6000);
         }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-            
+
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-            
+
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
