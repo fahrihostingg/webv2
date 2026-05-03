@@ -796,3 +796,139 @@ body.dark-mode .toast {
     .version-badge { bottom: 12px; right: 12px; }
     .auth-card { padding: 32px 24px; }
 }
+/* === Responsive Fixes v1.3.1 === */
+@media (max-width: 1024px) {
+    .dashboard { padding: 15px; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+        padding: 15px 20px;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 22px;
+    }
+    
+    .dashboard-header button {
+        padding: 8px 14px;
+        font-size: 13px;
+        margin: 5px;
+    }
+    
+    .stats {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .stat-box {
+        padding: 20px;
+    }
+    
+    .stat-box h3 {
+        font-size: 28px;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    .user-card {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 15px;
+    }
+    
+    .user-actions {
+        margin-top: 12px;
+        width: 100%;
+        flex-wrap: wrap;
+    }
+    
+    .user-actions button,
+    .user-actions select {
+        flex: 1;
+        min-width: 80px;
+        font-size: 12px;
+        padding: 8px 12px;
+    }
+    
+    .search-bar {
+        flex-direction: column;
+    }
+    
+    .search-input {
+        min-width: 100%;
+        font-size: 14px;
+    }
+    
+    .bulk-actions {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+    }
+    
+    .bulk-actions button {
+        width: 100%;
+        margin: 5px 0;
+    }
+    
+    .version-badge {
+        bottom: 10px;
+        right: 10px;
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+    
+    .toast {
+        right: 10px;
+        left: 10px;
+        min-width: auto;
+    }
+    
+    .changelog-content {
+        margin: 20px;
+        padding: 20px;
+        max-width: calc(100% - 40px);
+    }
+}
+
+@media (max-width: 480px) {
+    .auth-card {
+        padding: 25px 20px;
+    }
+    
+    .auth-card h1 {
+        font-size: 24px;
+    }
+    
+    .form-group input {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+    
+    .btn-primary {
+        padding: 12px;
+        font-size: 15px;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 20px;
+    }
+    
+    .stat-box h3 {
+        font-size: 24px;
+    }
+    
+    .card {
+        padding: 15px;
+    }
+    
+    .card h3 {
+        font-size: 18px;
+    }
+}
