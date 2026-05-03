@@ -44,9 +44,16 @@
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('pending')) {
                 showMessage('Akaun anda masih pending. Tunggu approval dari Dev.', 'error');
+                // Clear param lepas 3 saat
+                setTimeout(() => {
+                    window.history.replaceState({}, document.title, '/login');
+                }, 3000);
             }
             if (urlParams.get('rejected')) {
                 showMessage('Akaun anda telah ditolak.', 'error');
+                setTimeout(() => {
+                    window.history.replaceState({}, document.title, '/login');
+                }, 3000);
             }
         })();
 
@@ -68,6 +75,7 @@
                 return;
             }
 
+            // Force refresh untuk dapat status latest dari DB
             await supabaseClient.auth.refreshSession();
 
             const { data: profile } = await supabaseClient
