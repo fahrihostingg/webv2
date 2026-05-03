@@ -31,7 +31,6 @@
     </div>
 
     <script>
-        // Kalau dah login, skip terus
         (async () => {
             const { ok, profile } = await checkAuth();
             if (ok) {
@@ -56,16 +55,20 @@
                 });
                 if (error) throw error;
 
-                const { data: profile } = await supabaseClient
+                const { data: profile, error: pError } = await supabaseClient
                     .from('profiles')
                     .select('status, role')
                     .eq('id', data.user.id)
                     .maybeSingle();
 
-                if (!profile) throw new Error('Profile tak wujud');
+                if (pError) throw new Error('Error baca profile: ' + pError.message);
+                if (!profile) {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Profile tak wujud. Sila daftar dulu.');
+                }
                 if (profile.status !== 'approved') {
                     await supabaseClient.auth.signOut();
-                    throw new Error('Akaun masih pending');
+                    throw new Error('Akaun masih pending approval admin');
                 }
 
                 if (profile.role === 'dev' || profile.role === 'admin') {
