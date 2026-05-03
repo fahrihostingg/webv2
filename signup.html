@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Register - Pahri Platform v1.4.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Pahri Platform v1.5.5</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -12,73 +11,59 @@
 <body class="auth-body">
     <div class="auth-container">
         <div class="auth-card">
-            <div style="text-align: center; margin-bottom: 24px;">
-                <h1 style="font-size: 28px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 4px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.4.0 Enterprise</p>
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.5</p>
             </div>
 
-            <h2 style="font-size: 19px; margin-bottom: 6px;">Daftar Akaun Baru</h2>
-            <p style="font-size: 13px; margin-bottom: 20px;">Perlu approval admin sebelum login</p>
+            <h2 style="font-size: 20px;">Register Akaun Baru</h2>
+            <p style="font-size: 13px;">Akaun akan pending sampai admin approve</p>
 
             <div id="message" class="message" style="display:none;"></div>
 
             <form id="signupForm">
                 <div class="form-group">
-                    <label>Nama Penuh</label>
-                    <input type="text" id="fullName" placeholder="Ahmad Bin Ali" required>
+                    <label>Full Name</label>
+                    <input type="text" id="fullName" placeholder="Nama Penuh" required>
                 </div>
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="email" placeholder="ahmad@pahri.local" required>
+                    <input type="email" id="email" placeholder="nama@email.com" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" placeholder="Min 6 karakter" required minlength="6">
-                    <small style="color: #999; font-size: 11px;">Min 6 karakter</small>
+                    <input type="password" id="password" placeholder="Min 6 karakter" required autocomplete="new-password" minlength="6">
                 </div>
                 <div class="form-group">
                     <label>Confirm Password</label>
-                    <input type="password" id="confirmPassword" placeholder="Taip semula" required>
+                    <input type="password" id="confirmPassword" placeholder="Ulang password" required autocomplete="new-password">
                 </div>
                 <button type="submit" class="btn-primary" id="signupBtn">
-                    <span id="btnText">Daftar Sekarang</span>
-                    <span id="btnLoading" style="display:none;">⏳ Loading...</span>
+                    <span id="btnText">Register Sekarang</span>
+                    <span id="btnLoading" style="display:none;">⏳ Creating...</span>
                 </button>
             </form>
 
             <div class="auth-link">
                 Dah ada akaun? <a href="/login">Login sini</a>
             </div>
-
-            <div style="margin-top: 24px; padding: 12px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                <p style="font-size: 11px; color: #856404; margin: 0;">
-                    <strong>⚠️ Nota:</strong> Status pending lepas register. Tunggu admin approve dulu baru boleh login.
-                </p>
-            </div>
         </div>
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.4.0
+        <span class="dot"></span>v1.5.5
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
-        // Auto dark mode
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
         }
 
-        // Check kalau dah login, redirect ke dashboard
-        (async () => {
-            const { data: { user } } = await supabaseClient.auth.getUser();
-            if (user) window.location.replace('/dashboard');
-        })();
-
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const fullName = document.getElementById('fullName').value.trim();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -87,18 +72,16 @@
             const btnLoading = document.getElementById('btnLoading');
             const signupBtn = document.getElementById('signupBtn');
 
-            // Validation
             if (password !== confirmPassword) {
                 showMessage('Password tak sama!', 'error');
                 return;
             }
 
             if (password.length < 6) {
-                showMessage('Password kena min 6 karakter!', 'error');
+                showMessage('Password min 6 karakter!', 'error');
                 return;
             }
 
-            // Loading state
             btnText.style.display = 'none';
             btnLoading.style.display = 'inline';
             signupBtn.disabled = true;
@@ -107,25 +90,29 @@
                 email: email,
                 password: password,
                 options: {
-                    data: { 
-                        full_name: fullName,
-                        role: 'user'
+                    data: {
+                        full_name: fullName
                     }
                 }
             });
 
             if (error) {
-                showMessage('Register gagal: ' + error.message, 'error');
+                console.error('Signup error:', error);
+                if (error.message.includes('already registered')) {
+                    showMessage('Email dah register. Cuba login.', 'error');
+                } else if (error.message.includes('password')) {
+                    showMessage('Password tak kuat. Guna huruf + nombor.', 'error');
+                } else {
+                    showMessage('Signup gagal: ' + error.message, 'error');
+                }
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 signupBtn.disabled = false;
                 return;
             }
 
-            showToast('Register berjaya! Tunggu approve.', 'success');
-            showMessage('Akaun dah create! Status: Pending. Admin akan approve soon.', 'success');
-            
-            setTimeout(() => window.location.replace('/login'), 3000);
+            showToast('✅ Register berjaya! Tunggu admin approve dulu.', 'success');
+            setTimeout(() => window.location.replace('/login'), 2000);
         });
 
         function showMessage(text, type) {
@@ -133,17 +120,17 @@
             msg.textContent = text;
             msg.className = 'message ' + type;
             msg.style.display = 'block';
-            setTimeout(() => msg.style.display = 'none', 5000);
+            setTimeout(() => msg.style.display = 'none', 6000);
         }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-            
+
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-            
+
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
