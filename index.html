@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -18,7 +17,18 @@
         (async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
             if (session) {
-                window.location.replace('/dashboard');
+                const { data: profile } = await supabaseClient
+                   .from('profiles')
+                   .select('status')
+                   .eq('id', session.user.id)
+                   .single();
+                
+                if (profile && profile.status === 'approved') {
+                    window.location.replace('/dashboard');
+                } else {
+                    await supabaseClient.auth.signOut();
+                    window.location.replace('/login');
+                }
             } else {
                 window.location.replace('/login');
             }
