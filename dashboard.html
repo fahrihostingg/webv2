@@ -8,54 +8,42 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
     <style>
-        .badge { padding: 3px 8px; border-radius: 4px; font-size: 12px; background: #667eea; color: white; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
-        .card-link { 
-            padding: 30px; background: #fff; border-radius: 12px; 
-            border: 1px solid #e0e0e0; text-align: center; cursor: pointer;
-            transition: all 0.2s;
-        }
-        .card-link:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
-        .card-link h3 { margin: 0 0 10px 0; color: #333; }
-        .card-link p { margin: 0; color: #666; font-size: 14px; }
+        body { background: #f5f5f5; font-family: Arial; margin: 0; }
+        .navbar { background: #6b5b95; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .navbar h1 { margin: 0; font-size: 20px; }
+        .navbar button { padding: 8px 16px; background: white; color: #6b5b95; border: none; border-radius: 4px; cursor: pointer; }
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .welcome { font-size: 24px; margin-bottom: 10px; }
+        .badge { display: inline-block; padding: 4px 12px; background: #6b5b95; color: white; border-radius: 12px; font-size: 12px; }
+        .loading { text-align: center; padding: 50px; color: #999; }
     </style>
 </head>
 <body>
-    <div class="dashboard">
-        <div class="dashboard-header">
-            <div>
-                <h1>Control Panel</h1>
-                <p>Selamat datang, <span id="userName">...</span>! 
-                   <span class="badge" id="userRole"></span>
-                </p>
-            </div>
-            <div>
-                <button onclick="window.location.href='/profile'">Profile</button>
-                <button onclick="logout()">Logout</button>
-            </div>
+    <div class="navbar">
+        <h1>AmmarBN Platform</h1>
+        <div>
+            <span id="userEmail"></span>
+            <button onclick="logout()">Logout</button>
         </div>
+    </div>
 
-        <div id="message" class="message"></div>
-
-        <div class="grid">
-            <div class="card-link" onclick="window.location.href='/profile'">
-                <h3>👤 Profile</h3>
-                <p>Urus maklumat akaun anda</p>
-            </div>
-            
-            <div class="card-link" id="adminCard" style="display:none;" onclick="window.location.href='/admin'">
-                <h3>⚙️ Admin Panel</h3>
-                <p>Urus users & sistem</p>
+    <div class="container">
+        <div id="loading" class="loading">Loading...</div>
+        
+        <div id="content" style="display:none;">
+            <div class="card">
+                <div class="welcome">Selamat datang, <span id="userName">...</span>!</div>
+                <p>Role: <span class="badge" id="userRole">...</span></p>
+                <p>Status: <span class="badge" style="background:#28a745;" id="userStatus">Approved</span></p>
             </div>
 
-            <div class="card-link" onclick="showMessage('Coming soon', 'info')">
-                <h3>📊 Statistics</h3>
-                <p>Lihat statistik sistem</p>
-            </div>
-
-            <div class="card-link" onclick="showMessage('Coming soon', 'info')">
-                <h3>🔧 Settings</h3>
-                <p>Konfigurasi sistem</p>
+            <div class="card">
+                <h3>Dashboard User</h3>
+                <p>Ni dashboard untuk user biasa. Letak content kau kat sini.</p>
+                <p id="adminLink" style="display:none;">
+                    <a href="/admin">→ Pergi ke Admin Panel</a>
+                </p>
             </div>
         </div>
     </div>
@@ -63,18 +51,43 @@
     <script>
         let currentUser = null;
 
-        async function init() {
-            const { ok, profile, redirect } = await checkAuth();
-            if (!ok) return window.location.replace(redirect);
+        async function initDashboard() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            
+            // Takde session = tendang login
+            if (!session) {
+                window.location.replace('/login');
+                return;
+            }
 
+            // Check profile + status
+            const { data: profile, error } = await supabaseClient
+                .from('profiles')
+                .select('id, full_name, email, role, status')
+                .eq('id', session.user.id)
+                .single();
+
+            // Takde profile atau bukan approved = logout
+            if (error || !profile || profile.status !== 'approved') {
+                await supabaseClient.auth.signOut();
+                alert('Akaun belum approve atau kena reject.');
+                window.location.replace('/login');
+                return;
+            }
+
+            // Approved - load dashboard
             currentUser = profile;
-            document.getElementById('userName').textContent = profile.full_name || 'User';
+            document.getElementById('userName').textContent = profile.full_name || profile.email;
+            document.getElementById('userEmail').textContent = profile.email;
             document.getElementById('userRole').textContent = profile.role.toUpperCase();
             
-            // Show admin card kalau dev/admin
-            if (profile.role === 'dev' || profile.role === 'admin') {
-                document.getElementById('adminCard').style.display = 'block';
+            // Kalau admin/dev, tunjuk link ke admin panel
+            if (profile.role === 'admin' || profile.role === 'dev') {
+                document.getElementById('adminLink').style.display = 'block';
             }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
         }
 
         async function logout() {
@@ -82,7 +95,7 @@
             window.location.replace('/login');
         }
 
-        init();
+        initDashboard();
     </script>
 </body>
 </html>
