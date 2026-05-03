@@ -11,7 +11,7 @@
 <body>
     <div class="container">
         <div class="content">
-            <div id="message" class="message"></div>
+            <div id="message" class="message" style="display:none;"></div>
             <h2>Login</h2>
             <form id="loginForm">
                 <div class="input-group">
@@ -31,46 +31,90 @@
     </div>
 
     <script>
+        // Kalau dah login, tendang dashboard
         (async () => {
-            const { ok } = await checkAuth();
-            if (ok) window.location.replace('/dashboard');
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) window.location.replace('/dashboard');
         })();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('loginBtn');
+            const originalText = btn.textContent;
             btn.disabled = true;
             btn.textContent = 'Login...';
 
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: document.getElementById('email').value,
-                    password: document.getElementById('password').value
+                // 1. Try login
+                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
                 });
-                if (error) throw error;
 
-                const { data: profile, error: pError } = await supabaseClient
-                    .from('profiles')
-                    .select('status, role')
-                    .eq('id', data.user.id)
-                    .maybeSingle();
+                if (signInError) {
+                    // 2. Check kalau user wujud ke tak kat profiles
+                    const { data: profileCheck } = await supabaseClient
+                        .from('profiles')
+                        .select('id, status')
+                        .eq('email', email)
+                        .maybeSingle();
 
-                if (pError) throw new Error('Error baca profile: ' + pError.message);
-                if (!profile) {
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Profile tak wujud. Sila daftar dulu.');
+                    if (!profileCheck) {
+                        throw new Error('Email belum daftar. Sila signup dulu.');
+                    } else if (profileCheck.status === 'pending') {
+                        await supabaseClient.auth.signOut(); // logout balik
+                        throw new Error('Akaun belum approve. Tunggu admin.');
+                    } else if (profileCheck.status === 'rejected') {
+                        await supabaseClient.auth.signOut();
+                        throw new Error('Akaun kena reject. Contact admin.');
+                    } else {
+                        // User wujud + approved tapi password salah
+                        throw new Error('Password salah. Cuba lagi.');
+                    }
                 }
+
+                // 3. Login berjaya, check status profile
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('role, status')
+                    .eq('id', signInData.user.id)
+                    .single();
+
+                if (profileError || !profile) {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Profile tak jumpa. Contact admin.');
+                }
+
                 if (profile.status !== 'approved') {
                     await supabaseClient.auth.signOut();
-                    throw new Error('Akaun masih pending approval admin');
+                    throw new Error('Akaun belum approve. Tunggu admin.');
                 }
 
-                // SEMUA USER MASUK DASHBOARD DULU
-                window.location.replace('/dashboard');
+                // 4. Semua ok, redirect ikut role
+                showMessage('Login berjaya!', 'success');
+                setTimeout(() => {
+                    if (profile.role === 'admin' || profile.role === 'dev') {
+                        window.location.replace('/admin');
+                    } else {
+                        window.location.replace('/dashboard');
+                    }
+                }, 500);
+
             } catch (err) {
-                showMessage(err.message, 'error');
+                console.error('Login error:', err);
+                let msg = err.message;
+                
+                if (msg.includes('Invalid login credentials')) {
+                    msg = 'Email atau password salah.';
+                }
+                
+                showMessage(msg, 'error');
+            } finally {
                 btn.disabled = false;
-                btn.textContent = 'Login';
+                btn.textContent = originalText;
             }
         });
     </script>
