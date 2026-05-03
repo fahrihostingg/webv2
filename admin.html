@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - AmmarBN Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <style>
+        .user-card { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 15px; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            margin-bottom: 10px;
+            background: #fff;
+        }
+        .user-info { flex: 1; }
+        .user-actions button { margin-left: 8px; }
+        .btn-approve { background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .btn-reject { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .stats { display: flex; gap: 20px; margin-bottom: 20px; }
+        .stat-box { background: #f8f9fa; padding: 15px; border-radius: 8px; flex: 1; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div>
+                <h1>Admin Panel</h1>
+                <p>Selamat datang, <span id="adminName">...</span>! 
+                   <span class="badge" id="adminRole"></span>
+                </p>
+            </div>
+            <div>
+                <button onclick="window.location.href='/dashboard'">Dashboard</button>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <h3 id="totalUsers">0</h3>
+                <p>Total Users</p>
+            </div>
+            <div class="stat-box">
+                <h3 id="pendingUsers">0</h3>
+                <p>Pending</p>
+            </div>
+            <div class="stat-box">
+                <h3 id="approvedUsers">0</h3>
+                <p>Approved</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Pending Approval</h3>
+            <div id="pendingList">Loading...</div>
+        </div>
+
+        <div class="card">
+            <h3>Semua Users</h3>
+            <div id="allUsersList">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        let currentAdmin = null;
+
+        async function init() {
+            try {
+                const { data: { user } } = await supabaseClient.auth.getUser();
+                if (!user) throw new Error('Not logged in');
+
+                const { data: profile, error } = await supabaseClient
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', user.id)
+                    .maybeSingle();
+
+                if (error) throw error;
+                if (!profile || profile.status !== 'approved') throw new Error('Not approved');
+                if (profile.role !== 'dev' && profile.role !== 'admin') throw new Error('Not admin');
+
+                currentAdmin = profile;
+                document.getElementById('adminName').textContent = profile.full_name || 'Admin';
+                document.getElementById('adminRole').textContent = profile.role.toUpperCase();
+                
+                loadStats();
+                loadPendingUsers();
+                loadAllUsers();
+            } catch (err) {
+                showMessage('Access denied: ' + err.message, 'error');
+                setTimeout(() => window.location.replace('/login'), 2000);
+            }
+        }
+
+        async function loadStats() {
+            const { data } = await supabaseClient.from('profiles').select('status');
+            if (!data) return;
+            
+            const total = data.length;
+            const pending = data.filter(u => u.status === 'pending').length;
+            const approved = data.filter(u => u.status === 'approved').length;
+            
+            document.getElementById('totalUsers').textContent = total;
+            document.getElementById('pendingUsers').textContent = pending;
+            document.getElementById('approvedUsers').textContent = approved;
+        }
+
+        async function loadPendingUsers() {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('id, full_name, email, created_at')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: true });
+
+            const list = document.getElementById('pendingList');
+            if (error) return list.innerHTML = '<p>Error: ' + error.message + '</p>';
+            if (!data?.length) return list.innerHTML = '<p>Tiada user pending</p>';
+
+            list.innerHTML = data.map(u => `
+                <div class="user-card">
+                    <div class="user-info">
+                        <strong>${u.full_name || 'No Name'}</strong><br>
+                        <small>${u.email || 'No email'} | ${new Date(u.created_at).toLocaleString()}</small>
+                    </div>
+                    <div class="user-actions">
+                        <button class="btn-approve" onclick="approveUser('${u.id}')">Approve</button>
+                        <button class="btn-reject" onclick="rejectUser('${u.id}')">Reject</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function loadAllUsers() {
+            const { data, error } = await supabaseClient
+                .from('profiles')
+                .select('id, full_name, email, role, status, created_at')
+                .order('created_at', { ascending: false });
+
+            const list = document.getElementById('allUsersList');
+            if (error) return list.innerHTML = '<p>Error: ' + error.message + '</p>';
+
+            list.innerHTML = data.map(u => `
+                <div class="user-card">
+                    <div class="user-info">
+                        <strong>${u.full_name || 'No Name'}</strong> 
+                        <span class="badge">${u.role}</span>
+                        <span class="badge" style="background:${u.status === 'approved' ? '#28a745' : '#ffc107'}">${u.status}</span><br>
+                        <small>${u.email || 'No email'}</small>
+                    </div>
+                    <div class="user-actions">
+                        ${u.status === 'pending' ? `<button class="btn-approve" onclick="approveUser('${u.id}')">Approve</button>` : ''}
+                        <select onchange="changeRole('${u.id}', this.value)">
+                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="dev" ${u.role === 'dev' ? 'selected' : ''}>Dev</option>
+                        </select>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function approveUser(id) {
+            const { error } = await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', id);
+            if (error) return showMessage('Error: ' + error.message, 'error');
+            showMessage('User approved!', 'success');
+            loadStats();
+            loadPendingUsers();
+            loadAllUsers();
+        }
+
+        async function rejectUser(id) {
+            if (!confirm('Confirm reject & delete user?')) return;
+            const { error } = await supabaseClient.from('profiles').delete().eq('id', id);
+            if (error) return showMessage('Error: ' + error.message, 'error');
+            showMessage('User rejected', 'success');
+            loadStats();
+            loadPendingUsers();
+            loadAllUsers();
+        }
+
+        async function changeRole(id, role) {
+            const { error } = await supabaseClient.from('profiles').update({ role }).eq('id', id);
+            if (error) return showMessage('Error: ' + error.message, 'error');
+            showMessage('Role updated!', 'success');
+            loadAllUsers();
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.replace('/login');
+        }
+
+        init();
+    </script>
+</body>
+</html>
