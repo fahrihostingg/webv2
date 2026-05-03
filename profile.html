@@ -3,10 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - Pahri v1.6.0</title>
+    <title>Profile - Pahri v1.6.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
 </head>
 <body class="dashboard-body">
     <div class="dashboard">
@@ -16,7 +24,9 @@
                 <p id="userWelcome">Loading...</p>
             </div>
             <div>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+                    <span id="themeIcon">🌓</span> Tema
+                </button>
                 <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
                 <button onclick="logout()">🚪 Logout</button>
             </div>
@@ -88,7 +98,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.6.0
+        <span class="dot"></span>v1.6.2
     </div>
 
     <div id="toastContainer"></div>
@@ -97,13 +107,31 @@
         let currentUser = null;
         let avatarFile = null;
 
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+        });
+
+        function applyTheme() {
+            const theme = localStorage.getItem('theme');
+            const isDark = theme === 'dark';
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark-mode');
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeIcon').textContent = '🌙';
+            }
         }
 
         function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode')? 'dark' : 'light');
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme();
+            showToast('Tema ditukar!', 'success');
         }
 
         (async () => {
@@ -114,10 +142,10 @@
             }
 
             const { data: profile } = await supabaseClient
-               .from('profiles')
-               .select('*')
-               .eq('id', session.user.id)
-               .single();
+             .from('profiles')
+             .select('*')
+             .eq('id', session.user.id)
+             .single();
 
             if (!profile) {
                 showToast('Profile not found', 'error');
@@ -136,7 +164,7 @@
             document.getElementById('status').value = currentUser.status.toUpperCase();
             document.getElementById('loginCount').textContent = currentUser.login_count || 0;
             document.getElementById('lastActive').textContent = currentUser.last_active 
-               ? new Date(currentUser.last_active).toLocaleString('id-ID') 
+             ? new Date(currentUser.last_active).toLocaleString('id-ID') 
                 : 'Never';
             document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
 
@@ -152,7 +180,7 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            if (file.size > 2 * 1024) {
+            if (file.size > 2097152) {
                 showToast('File terlalu besar! Max 2MB', 'error');
                 return;
             }
@@ -179,14 +207,13 @@
 
             let avatarUrl = currentUser.avatar_url;
 
-            // Upload avatar kalau ada
             if (avatarFile) {
                 const fileExt = avatarFile.name.split('.').pop();
                 const fileName = `${currentUser.id}.${fileExt}`;
                 
                 const { error: uploadError } = await supabaseClient.storage
-                   .from('avatars')
-                   .upload(fileName, avatarFile, { upsert: true });
+                 .from('avatars')
+                 .upload(fileName, avatarFile, { upsert: true });
 
                 if (uploadError) {
                     showMessage('Error upload avatar: ' + uploadError.message, 'error');
@@ -200,15 +227,14 @@
                 avatarUrl = data.publicUrl;
             }
 
-            // Update profile
             const { error } = await supabaseClient
-               .from('profiles')
-               .update({ 
+             .from('profiles')
+             .update({ 
                     full_name: fullName,
                     avatar_url: avatarUrl,
                     updated_at: new Date().toISOString()
                 })
-               .eq('id', currentUser.id);
+             .eq('id', currentUser.id);
 
             if (error) {
                 showMessage('Error: ' + error.message, 'error');
@@ -218,7 +244,6 @@
                 return;
             }
 
-            // Log activity
             await supabaseClient.from('activity_logs').insert({
                 user_id: currentUser.id,
                 action: 'profile_update'
