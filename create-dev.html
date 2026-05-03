@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Dev - One Time</title>
+    <title>Create Dev - One Time Use</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -13,7 +13,9 @@
         <div class="content">
             <div id="message" class="message"></div>
             <h2>Buat Akaun Dev Pertama</h2>
-            <p style="color: #dc3545; font-size: 14px;">Delete file ni lepas guna!</p>
+            <p style="color: #dc3545; font-size: 14px; margin-bottom: 20px;">
+                ⚠️ Delete file ni lepas guna! Bahaya kalau orang lain jumpa.
+            </p>
             <form id="devForm">
                 <div class="input-group">
                     <label>Nama Dev</label>
@@ -66,7 +68,7 @@
             if (updateError) {
                 showMessage('User created tapi gagal update role: ' + updateError.message, 'error');
             } else {
-                showMessage('Dev account berjaya! Sila login: ' + email, 'success');
+                showMessage('✅ Dev account berjaya! Email: ' + email + ' | Dah boleh login', 'success');
                 document.getElementById('devForm').reset();
             }
 
