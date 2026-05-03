@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel Pro - AmmarBN v1.2</title>
+    <title>Admin Panel Pro - AmmarBN v1.2.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -13,13 +13,13 @@
         <div class="dashboard-header">
             <div>
                 <h1>⚡ Admin Panel Pro</h1>
-                <p>Selamat datang, <span id="adminName">...</span>! 
+                <p>Selamat datang, <span id="adminName">...</span>!
                    <span class="badge" id="adminRole"></span>
                 </p>
             </div>
             <div>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓 Theme</button>
-                <button class="changelog-btn" onclick="showChangelog()">📋 Changelog</button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+                <button class="changelog-btn" onclick="showChangelog()">📋</button>
                 <button onclick="window.location.href='/dashboard'">Dashboard</button>
                 <button onclick="logout()">Logout</button>
             </div>
@@ -28,19 +28,19 @@
         <div id="message" class="message" style="display:none;"></div>
 
         <div class="stats">
-            <div class="stat-box">
+            <div class="stat-box" onclick="filterByStatus('all')">
                 <h3 id="totalUsers">0</h3>
                 <p>Total Users</p>
             </div>
-            <div class="stat-box">
+            <div class="stat-box" onclick="filterByStatus('pending')">
                 <h3 id="pendingUsers">0</h3>
                 <p>Pending</p>
             </div>
-            <div class="stat-box">
+            <div class="stat-box" onclick="filterByStatus('approved')">
                 <h3 id="approvedUsers">0</h3>
                 <p>Approved</p>
             </div>
-            <div class="stat-box">
+            <div class="stat-box" onclick="filterByStatus('rejected')">
                 <h3 id="rejectedUsers">0</h3>
                 <p>Rejected</p>
             </div>
@@ -48,7 +48,7 @@
 
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>Pending Approval</h3>
+                <h3>🔔 Pending Approval</h3>
                 <button class="btn-export" onclick="exportCSV('pending')">📥 Export CSV</button>
             </div>
             <div id="pendingList">
@@ -59,10 +59,10 @@
 
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>Semua Users</h3>
+                <h3>👥 Semua Users</h3>
                 <button class="btn-export" onclick="exportCSV('all')">📥 Export All CSV</button>
             </div>
-            
+
             <div class="search-bar">
                 <input type="text" class="search-input" id="searchInput" placeholder="🔍 Cari nama atau email..." onkeyup="filterUsers()">
                 <select class="filter-select" id="roleFilter" onchange="filterUsers()">
@@ -101,28 +101,32 @@
         </div>
     </div>
 
-    <div class="version-badge">
-        <span class="dot"></span>v1.2.0 Pro
+    <div class="version-badge" onclick="showChangelog()">
+        <span class="dot"></span>v1.2.1 Pro
     </div>
 
     <div id="changelogModal" class="changelog-modal" onclick="hideChangelog()">
         <div class="changelog-content" onclick="event.stopPropagation()">
-            <h3>🚀 Changelog v1.2.0 Pro</h3>
+            <h3>🚀 Changelog v1.2.1 Pro</h3>
             <ul>
-                <li><strong>Dark Mode:</strong> Toggle theme gelap/terang</li>
-                <li><strong>Search & Filter:</strong> Cari user ikut nama, email, role, status</li>
-                <li><strong>Bulk Actions:</strong> Approve/Reject ramai-ramai sekali jalan</li>
-                <li><strong>Export CSV:</strong> Download data user ke Excel</li>
-                <li><strong>Activity Log:</strong> Track semua action admin</li>
-                <li><strong>Toast Notifications:</strong> Notif cantik slide dari kanan</li>
+                <li><strong>Dark Mode:</strong> Toggle theme, auto save preference</li>
+                <li><strong>Search & Filter:</strong> Real-time search nama/email, filter role/status</li>
+                <li><strong>Bulk Actions:</strong> Select multiple users, approve/reject sekali jalan</li>
+                <li><strong>Export CSV:</strong> Download data ke Excel dengan 1 klik</li>
+                <li><strong>Activity Log:</strong> Track semua action admin dengan timestamp</li>
+                <li><strong>Toast Notifications:</strong> Notif slide cantik dari kanan</li>
                 <li><strong>Skeleton Loading:</strong> Loading animation smooth</li>
-                <li><strong>Real-time Stats:</strong> Counter animation</li>
+                <li><strong>Stats Animation:</strong> Counter naik dengan animation</li>
+                <li><strong>Auto Delete:</strong> Dev reject = DELETE terus</li>
+                <li><strong>Clickable Stats:</strong> Klik stat box untuk filter</li>
             </ul>
             <h4>🔜 v1.3.0 Coming</h4>
             <ul>
-                <li>Email notification</li>
-                <li>User analytics chart</li>
+                <li>Email notification bila approve/reject</li>
+                <li>User analytics chart dengan Chart.js</li>
                 <li>Role permissions matrix</li>
+                <li>2FA authentication</li>
+                <li>Audit log export</li>
             </ul>
             <button class="btn-primary" onclick="hideChangelog()">Tutup</button>
         </div>
@@ -131,7 +135,7 @@
     <div id="toastContainer"></div>
 
     <script>
-        const APP_VERSION = '1.2.0';
+        const APP_VERSION = '1.2.1';
         let currentAdmin = null;
         let allUsers = [];
         let filteredUsers = [];
@@ -145,7 +149,6 @@
             showToast('Theme changed!', 'info');
         }
 
-        // Load saved theme
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
         }
@@ -160,17 +163,19 @@
             currentAdmin = profile;
             document.getElementById('adminName').textContent = profile.full_name || profile.email;
             document.getElementById('adminRole').textContent = profile.role.toUpperCase();
-            
+
             await loadAllData();
-            addActivity('Admin login', 'info');
+            addActivity('Admin login: ' + profile.email, 'info');
             console.log('Admin Panel Pro v' + APP_VERSION);
         }
 
         async function loadAllData() {
             const { data, error } = await supabaseClient.rpc('get_all_users_admin');
-            
+
             if (error) {
                 showToast('Error: ' + error.message, 'error');
+                document.getElementById('pendingList').innerHTML = '<p>Error load data</p>';
+                document.getElementById('allUsersList').innerHTML = '<p>Error load data</p>';
                 return;
             }
 
@@ -194,7 +199,7 @@
             const duration = 800;
             const step = target / (duration / 16);
             let current = 0;
-            
+
             const timer = setInterval(() => {
                 current += step;
                 if (current >= target) {
@@ -209,7 +214,7 @@
         function renderPendingUsers() {
             const pending = allUsers.filter(u => u.status === 'pending');
             const list = document.getElementById('pendingList');
-            
+
             if (!pending.length) return list.innerHTML = '<p style="text-align:center; color:#999;">Tiada user pending</p>';
 
             list.innerHTML = pending.map(u => `
@@ -234,7 +239,7 @@
                 <div class="user-card">
                     <input type="checkbox" class="user-checkbox" value="${u.id}" onchange="toggleSelect('${u.id}')" ${selectedUsers.has(u.id)? 'checked' : ''}>
                     <div class="user-info" style="flex:1;">
-                        <strong>${u.full_name || 'No Name'}</strong> 
+                        <strong>${u.full_name || 'No Name'}</strong>
                         <span class="badge badge-${u.role}">${u.role}</span>
                         <span class="badge badge-${u.status}">${u.status}</span><br>
                         <small>${u.email} | ${new Date(u.created_at).toLocaleDateString('ms-MY')}</small>
@@ -259,8 +264,8 @@
             const status = document.getElementById('statusFilter').value;
 
             filteredUsers = allUsers.filter(u => {
-                const matchSearch =!search || 
-                    u.full_name?.toLowerCase().includes(search) || 
+                const matchSearch =!search ||
+                    u.full_name?.toLowerCase().includes(search) ||
                     u.email?.toLowerCase().includes(search);
                 const matchRole =!role || u.role === role;
                 const matchStatus =!status || u.status === status;
@@ -268,6 +273,11 @@
             });
 
             renderAllUsers();
+        }
+
+        function filterByStatus(status) {
+            document.getElementById('statusFilter').value = status === 'all'? '' : status;
+            filterUsers();
         }
 
         // Bulk Actions
@@ -283,7 +293,7 @@
         function updateBulkActions() {
             const bulkDiv = document.getElementById('bulkActions');
             const count = document.getElementById('selectedCount');
-            
+
             if (selectedUsers.size > 0) {
                 bulkDiv.classList.add('active');
                 count.textContent = selectedUsers.size;
@@ -300,13 +310,13 @@
 
         async function bulkApprove() {
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
-            
+
             for (const id of selectedUsers) {
                 await supabaseClient.rpc('update_user_admin', {
                     user_id: id, new_status: 'approved', new_role: null
                 });
             }
-            
+
             addActivity(`Bulk approved ${selectedUsers.size} users`, 'success');
             showToast(`${selectedUsers.size} users approved!`, 'success');
             clearSelection();
@@ -315,13 +325,13 @@
 
         async function bulkReject() {
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
-            
+
             for (const id of selectedUsers) {
                 await supabaseClient.rpc('update_user_admin', {
                     user_id: id, new_status: 'rejected', new_role: null
                 });
             }
-            
+
             addActivity(`Bulk rejected ${selectedUsers.size} users`, 'warning');
             showToast(`${selectedUsers.size} users rejected!`, 'success');
             clearSelection();
@@ -330,13 +340,13 @@
 
         // Export CSV
         function exportCSV(type) {
-            const data = type === 'pending' 
-               ? allUsers.filter(u => u.status === 'pending')
-                : allUsers;
-            
+            const data = type === 'pending'
+              ? allUsers.filter(u => u.status === 'pending')
+                : filteredUsers;
+
             const csv = [
                 ['Name', 'Email', 'Role', 'Status', 'Created At'].join(','),
-               ...data.map(u => [
+              ...data.map(u => [
                     u.full_name || '',
                     u.email,
                     u.role,
@@ -351,7 +361,7 @@
             a.href = url;
             a.download = `users_${type}_${Date.now()}.csv`;
             a.click();
-            
+
             addActivity(`Exported ${data.length} users to CSV`, 'info');
             showToast('CSV exported!', 'success');
         }
@@ -382,13 +392,10 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-            
+
             toast.className = `toast ${type}`;
-            toast.innerHTML = `
-                <span class="toast-icon">${icons[type]}</span>
-                <span>${message}</span>
-            `;
-            
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
@@ -399,7 +406,7 @@
                 user_id: id, new_status: 'approved', new_role: null
             });
             if (error) return showToast('Error: ' + error.message, 'error');
-            
+
             addActivity(`Approved user: ${user.email}`, 'success');
             showToast('User approved!', 'success');
             await loadAllData();
@@ -407,18 +414,18 @@
 
         async function rejectUser(id, email) {
             const isDev = currentAdmin.role === 'dev';
-            const msg = isDev 
-               ? `DELETE user ${email}? User akan hilang terus dari database.` 
+            const msg = isDev
+              ? `DELETE user ${email}? User akan hilang terus dari database.`
                 : `Reject user ${email}? Status akan jadi rejected.`;
-            
+
             if (!confirm(msg)) return;
-            
+
             const { error } = await supabaseClient.rpc('update_user_admin', {
                 user_id: id, new_status: 'rejected', new_role: null
             });
-            
+
             if (error) return showToast('Error: ' + error.message, 'error');
-            
+
             addActivity(`${isDev? 'Deleted' : 'Rejected'} user: ${email}`, 'warning');
             showToast(isDev? 'User deleted!' : 'User rejected', 'success');
             await loadAllData();
@@ -431,7 +438,7 @@
                 user_id: id, new_status: null, new_role: role
             });
             if (error) return showToast('Error: ' + error.message, 'error');
-            
+
             addActivity(`Changed ${user.email} role to ${role}`, 'info');
             showToast('Role updated!', 'success');
             await loadAllData();
