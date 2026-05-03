@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - Pahri Platform v1.5.3</title>
+    <title>Login - Pahri Platform v1.5.4</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -13,7 +13,7 @@
         <div class="auth-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.3 Turbo</p>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.4 Turbo</p>
             </div>
 
             <h2 style="font-size: 20px;">Login Akaun</h2>
@@ -58,7 +58,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.5.3
+        <span class="dot"></span>v1.5.4
     </div>
 
     <div id="toastContainer"></div>
@@ -81,7 +81,6 @@
             const { data: { user } } = await supabaseClient.auth.getUser();
             
             if (user) {
-                // Check cache dulu
                 const auth = await checkAuth(null, true);
                 if (auth.ok) {
                     console.log(`Auth check: ${Date.now() - start}ms`);
@@ -107,17 +106,19 @@
 
             const start = Date.now();
 
-            // Step 1: Login - 1 query je
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
+            // Step 1: Login
+            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
 
-            if (error) {
-                if (error.message.includes('Invalid login credentials')) {
-                    showMessage('Email atau password salah. Check balik.', 'error');
+            if (authError) {
+                if (authError.message.includes('Invalid login credentials')) {
+                    showMessage('Email atau password salah. Check balik atau register dulu.', 'error');
+                } else if (authError.message.includes('Email not confirmed')) {
+                    showMessage('Email belum confirm. Check inbox.', 'error');
                 } else {
-                    showMessage('Login gagal: ' + error.message, 'error');
+                    showMessage('Login gagal: ' + authError.message, 'error');
                 }
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
@@ -131,17 +132,45 @@
                 localStorage.removeItem('pahri_email');
             }
 
-            // Step 2: Get profile - select column je, tak select *
-            const { data: profile, error: profileError } = await supabaseClient
-              .from('profiles')
-              .select('id,status,role,full_name')
-              .eq('id', data.user.id)
-              .single();
+            // Step 2: Check profile - WITH UPSERT
+            let { data: profile, error: profileError } = await supabaseClient
+             .from('profiles')
+             .select('id,status,role,full_name')
+             .eq('id', authData.user.id)
+             .single();
 
-            console.log(`Login time: ${Date.now() - start}ms`);
-
+            // FIX: Kalau takde, create pakai UPSERT
             if (profileError || !profile) {
-                showMessage('Profile tak jumpa. Contact admin.', 'error');
+                console.log('Profile tak wujud, creating...', profileError);
+                
+                const { data: newProfile, error: insertError } = await supabaseClient
+                 .from('profiles')
+                 .upsert({
+                      id: authData.user.id,
+                      email: authData.user.email,
+                      full_name: authData.user.user_metadata?.full_name || email.split('@')[0],
+                      role: 'user',
+                      status: 'pending'
+                  }, { 
+                      onConflict: 'id',
+                      ignoreDuplicates: false 
+                  })
+                 .select()
+                 .single();
+
+                if (insertError) {
+                    console.error('Insert error:', insertError);
+                    showMessage('Error create profile: ' + insertError.message + '. Contact admin.', 'error');
+                    await supabaseClient.auth.signOut();
+                    clearCache();
+                    btnText.style.display = 'inline';
+                    btnLoading.style.display = 'none';
+                    loginBtn.disabled = false;
+                    return;
+                }
+                
+                profile = newProfile;
+                showMessage('⚠️ Profile baru di-create. Status: PENDING. Tunggu admin approve kat dashboard.', 'error');
                 await supabaseClient.auth.signOut();
                 clearCache();
                 btnText.style.display = 'inline';
@@ -150,8 +179,10 @@
                 return;
             }
 
+            console.log(`Login time: ${Date.now() - start}ms`, profile);
+
             if (profile.status === 'pending') {
-                showMessage('⚠️ Akaun masih PENDING. Tunggu admin approve dulu.', 'error');
+                showMessage('⚠️ Akaun masih PENDING. Tunggu admin approve dulu baru boleh login.', 'error');
                 await supabaseClient.auth.signOut();
                 clearCache();
                 btnText.style.display = 'inline';
