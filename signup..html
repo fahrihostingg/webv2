@@ -33,14 +33,17 @@
                     Daftar dengan Google
                 </button>
                 <p style="text-align: center; margin-top: 20px; color: #6c757d; font-size: 14px;">
-                    Sudah punya akun? <a href="login.html" style="color: #667eea; text-decoration: none;">Masuk</a>
+                    Sudah punya akun? <a href="/login" style="color: #667eea; text-decoration: none;">Masuk</a>
                 </p>
             </form>
         </div>
     </div>
 
     <script>
-        requireGuest();
+        (async () => {
+            const isLoggedIn = await requireGuest();
+            if (isLoggedIn) return;
+        })();
 
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -52,7 +55,7 @@
             const password = document.getElementById('signupPassword').value;
             const fullName = document.getElementById('signupName').value;
 
-            const { error } = await supabaseClient.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email,
                 password,
                 options: {
@@ -66,14 +69,14 @@
                 btn.textContent = 'Daftar';
             } else {
                 showMessage('Akun berhasil! Cek email untuk verifikasi.', 'success');
-                setTimeout(() => window.location.href = 'login.html', 2000);
+                setTimeout(() => window.location.replace('/login'), 2000);
             }
         });
 
         async function signInWithGoogle() {
             const { error } = await supabaseClient.auth.signInWithOAuth({
                 provider: 'google',
-                options: { redirectTo: window.location.origin + '/dashboard.html' }
+                options: { redirectTo: window.location.origin + '/dashboard' }
             });
             if (error) showMessage(error.message, 'error');
         }
