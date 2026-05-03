@@ -3,302 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel Pro - Pahri v1.2.1</title>
+    <title>Admin Panel - Pahri v1.4.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="supabase.js"></script>
 </head>
 <body class="admin-body">
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>⚡ Admin Panel Pro</h1>
-                <p>Selamat datang, <span id="adminName">...</span>!
-                   <span class="badge" id="adminRole"></span>
-                </p>
+                <h1>🔧 Pahri Admin Panel</h1>
+                <p id="adminWelcome">Loading...</p>
             </div>
             <div>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-                <button class="changelog-btn" onclick="showChangelog()">📋</button>
-                <button onclick="window.location.href='/dashboard'">Dashboard</button>
-                <button onclick="logout()">Logout</button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <div id="message" class="message" style="display:none;"></div>
-
-        <div class="stats">
-            <div class="stat-box" onclick="filterByStatus('all')">
-                <h3 id="totalUsers">0</h3>
-                <p>Total Users</p>
-            </div>
-            <div class="stat-box" onclick="filterByStatus('pending')">
-                <h3 id="pendingUsers">0</h3>
-                <p>Pending</p>
-            </div>
-            <div class="stat-box" onclick="filterByStatus('approved')">
-                <h3 id="approvedUsers">0</h3>
-                <p>Approved</p>
-            </div>
-            <div class="stat-box" onclick="filterByStatus('rejected')">
-                <h3 id="rejectedUsers">0</h3>
-                <p>Rejected</p>
-            </div>
+        <div class="stats" id="statsContainer">
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
         </div>
 
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>🔔 Pending Approval</h3>
-                <button class="btn-export" onclick="exportCSV('pending')">📥 Export CSV</button>
-            </div>
-            <div id="pendingList">
-                <div class="skeleton skeleton-card"></div>
-                <div class="skeleton skeleton-card"></div>
-            </div>
+            <h3>📈 User Growth Analytics</h3>
+            <canvas id="userChart" style="max-height: 300px;"></canvas>
         </div>
 
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>👥 Semua Users</h3>
-                <button class="btn-export" onclick="exportCSV('all')">📥 Export All CSV</button>
-            </div>
-
+            <h3>🔍 Search & Filter Users</h3>
             <div class="search-bar">
-                <input type="text" class="search-input" id="searchInput" placeholder="🔍 Cari nama atau email..." onkeyup="filterUsers()">
-                <select class="filter-select" id="roleFilter" onchange="filterUsers()">
-                    <option value="">Semua Role</option>
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau email..." oninput="filterUsers()">
+                <select id="roleFilter" class="filter-select" onchange="filterUsers()">
+                    <option value="all">Semua Role</option>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
                     <option value="dev">Dev</option>
                 </select>
-                <select class="filter-select" id="statusFilter" onchange="filterUsers()">
-                    <option value="">Semua Status</option>
+                <select id="statusFilter" class="filter-select" onchange="filterUsers()">
+                    <option value="all">Semua Status</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                 </select>
+                <button class="btn-export" onclick="exportUsers()">📥 Export CSV</button>
             </div>
 
-            <div id="bulkActions" class="bulk-actions">
-                <span><strong id="selectedCount">0</strong> user selected</span>
+            <div class="bulk-actions" id="bulkActions">
+                <span><strong id="selectedCount">0</strong> user dipilih</span>
                 <div>
-                    <button onclick="bulkApprove()">✓ Approve All</button>
-                    <button onclick="bulkReject()" style="background: #dc3545;">✕ Reject All</button>
-                    <button onclick="clearSelection()">Clear</button>
+                    <button onclick="bulkApprove()">✅ Approve All</button>
+                    <button onclick="bulkReject()">❌ Reject All</button>
+                    <button onclick="bulkDelete()">🗑️ Delete All</button>
+                    <button onclick="clearSelection()">✖️ Clear</button>
                 </div>
             </div>
 
-            <div id="allUsersList">
-                <div class="skeleton skeleton-card"></div>
+            <div id="usersList">
                 <div class="skeleton skeleton-card"></div>
                 <div class="skeleton skeleton-card"></div>
             </div>
         </div>
-
-        <div class="card">
-            <h3>📊 Activity Log</h3>
-            <div id="activityLog" class="activity-log"></div>
-        </div>
     </div>
 
-    <div class="version-badge" onclick="showChangelog()">
-        <span class="dot"></span>v1.2.1 Pro
-    </div>
-
-    <div id="changelogModal" class="changelog-modal" onclick="hideChangelog()">
-        <div class="changelog-content" onclick="event.stopPropagation()">
-            <h3>🚀 Changelog v1.2.1 Pro</h3>
-            <ul>
-                <li><strong>Dark Mode:</strong> Toggle theme, auto save preference</li>
-                <li><strong>Search & Filter:</strong> Real-time search nama/email, filter role/status</li>
-                <li><strong>Bulk Actions:</strong> Select multiple users, approve/reject sekali jalan</li>
-                <li><strong>Export CSV:</strong> Download data ke Excel dengan 1 klik</li>
-                <li><strong>Activity Log:</strong> Track semua action admin dengan timestamp</li>
-                <li><strong>Toast Notifications:</strong> Notif slide cantik dari kanan</li>
-                <li><strong>Skeleton Loading:</strong> Loading animation smooth</li>
-                <li><strong>Stats Animation:</strong> Counter naik dengan animation</li>
-                <li><strong>Auto Delete:</strong> Dev reject = DELETE terus</li>
-                <li><strong>Clickable Stats:</strong> Klik stat box untuk filter</li>
-            </ul>
-            <h4>🔜 v1.3.0 Coming</h4>
-            <ul>
-                <li>Email notification bila approve/reject</li>
-                <li>User analytics chart dengan Chart.js</li>
-                <li>Role permissions matrix</li>
-                <li>2FA authentication</li>
-                <li>Audit log export</li>
-            </ul>
-            <button class="btn-primary" onclick="hideChangelog()">Tutup</button>
-        </div>
+    <div class="version-badge">
+        <span class="dot"></span>v1.4.0
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
-        const APP_VERSION = '1.2.1';
-        let currentAdmin = null;
         let allUsers = [];
-        let filteredUsers = [];
         let selectedUsers = new Set();
-        let activityLog = [];
-
-        // Dark Mode
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode')? 'dark' : 'light');
-            showToast('Theme changed!', 'info');
-        }
+        let currentAdmin = null;
 
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
         }
 
-        async function init() {
-            const { ok, profile, redirect, msg } = await checkAuth('admin');
-            if (!ok) {
-                if (msg) showToast(msg, 'error');
-                return setTimeout(() => window.location.replace(redirect), 1500);
-            }
-
-            currentAdmin = profile;
-            document.getElementById('adminName').textContent = profile.full_name || profile.email;
-            document.getElementById('adminRole').textContent = profile.role.toUpperCase();
-
-            await loadAllData();
-            addActivity('Admin login: ' + profile.email, 'info');
-            console.log('Admin Panel Pro v' + APP_VERSION);
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            showToast('Tema ditukar!', 'success');
         }
 
-        async function loadAllData() {
-            const { data, error } = await supabaseClient.rpc('get_all_users_admin');
-
-            if (error) {
-                showToast('Error: ' + error.message, 'error');
-                document.getElementById('pendingList').innerHTML = '<p>Error load data</p>';
-                document.getElementById('allUsersList').innerHTML = '<p>Error load data</p>';
+        (async () => {
+            const auth = await checkAuth('admin');
+            if (!auth.ok) {
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
                 return;
             }
 
-            allUsers = data || [];
-            filteredUsers = [...allUsers];
-            renderStats();
-            renderPendingUsers();
-            renderAllUsers();
-        }
+            currentAdmin = auth.profile;
+            document.getElementById('adminWelcome').textContent = `Welcome, ${currentAdmin.full_name || currentAdmin.email}`;
+            
+            await loadStats();
+            await loadUsers();
+            initChart();
+        })();
 
-        function renderStats() {
-            animateNumber('totalUsers', allUsers.length);
-            animateNumber('pendingUsers', allUsers.filter(u => u.status === 'pending').length);
-            animateNumber('approvedUsers', allUsers.filter(u => u.status === 'approved').length);
-            animateNumber('rejectedUsers', allUsers.filter(u => u.status === 'rejected').length);
-        }
+        async function loadStats() {
+            const { count: totalUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true });
 
-        function animateNumber(id, target) {
-            const el = document.getElementById(id);
-            const start = 0;
-            const duration = 800;
-            const step = target / (duration / 16);
-            let current = 0;
+            const { count: pendingUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
 
-            const timer = setInterval(() => {
-                current += step;
-                if (current >= target) {
-                    el.textContent = target;
-                    clearInterval(timer);
-                } else {
-                    el.textContent = Math.floor(current);
-                }
-            }, 16);
-        }
+            const { count: adminUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'admin');
 
-        function renderPendingUsers() {
-            const pending = allUsers.filter(u => u.status === 'pending');
-            const list = document.getElementById('pendingList');
+            const { count: approvedUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'approved');
 
-            if (!pending.length) return list.innerHTML = '<p style="text-align:center; color:#999;">Tiada user pending</p>';
-
-            list.innerHTML = pending.map(u => `
-                <div class="user-card">
-                    <div class="user-info">
-                        <strong>${u.full_name || 'No Name'}</strong><br>
-                        <small>${u.email} | ${new Date(u.created_at).toLocaleString('ms-MY')}</small>
-                    </div>
-                    <div class="user-actions">
-                        <button class="btn-approve" onclick="approveUser('${u.id}')">✓ Approve</button>
-                        <button class="btn-reject" onclick="rejectUser('${u.id}', '${u.email}')">✕ Reject</button>
-                    </div>
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="stat-box">
+                    <h3>${totalUsers || 0}</h3>
+                    <p>👥 Total Users</p>
                 </div>
-            `).join('');
+                <div class="stat-box">
+                    <h3>${pendingUsers || 0}</h3>
+                    <p>⏳ Pending Approval</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${adminUsers || 0}</h3>
+                    <p>👑 Admins</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${approvedUsers || 0}</h3>
+                    <p>✅ Approved</p>
+                </div>
+            `;
         }
 
-        function renderAllUsers() {
-            const list = document.getElementById('allUsersList');
-            if (!filteredUsers.length) return list.innerHTML = '<p style="text-align:center; color:#999;">Tiada user jumpa</p>';
+        function initChart() {
+            const ctx = document.getElementById('userChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'New Users',
+                        data: [12, 19, 15, 25, 22, 30],
+                        backgroundColor: 'rgba(102,126,234,0.8)',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
 
-            list.innerHTML = filteredUsers.map(u => `
+        async function loadUsers() {
+            const { data: users, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                showToast('Error load users: ' + error.message, 'error');
+                return;
+            }
+
+            allUsers = users || [];
+            renderUsers(allUsers);
+        }
+
+        function renderUsers(users) {
+            const list = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada user dijumpai</p>';
+                return;
+            }
+
+            list.innerHTML = users.map(user => `
                 <div class="user-card">
-                    <input type="checkbox" class="user-checkbox" value="${u.id}" onchange="toggleSelect('${u.id}')" ${selectedUsers.has(u.id)? 'checked' : ''}>
-                    <div class="user-info" style="flex:1;">
-                        <strong>${u.full_name || 'No Name'}</strong>
-                        <span class="badge badge-${u.role}">${u.role}</span>
-                        <span class="badge badge-${u.status}">${u.status}</span><br>
-                        <small>${u.email} | ${new Date(u.created_at).toLocaleDateString('ms-MY')}</small>
+                    <input type="checkbox" class="user-checkbox" 
+                           value="${user.id}" 
+                           ${selectedUsers.has(user.id) ? 'checked' : ''}
+                           onchange="toggleUserSelection('${user.id}')">
+                    <div class="user-info">
+                        <strong>${user.full_name || 'No Name'}</strong>
+                        <small>${user.email}</small>
+                        <span class="badge badge-${user.role}">${user.role}</span>
+                        <span class="badge badge-${user.status}">${user.status}</span>
                     </div>
                     <div class="user-actions">
-                        ${u.status === 'pending'? `<button class="btn-approve" onclick="approveUser('${u.id}')">✓</button>` : ''}
-                        ${u.status === 'pending'? `<button class="btn-reject" onclick="rejectUser('${u.id}', '${u.email}')">✕</button>` : ''}
-                        <select onchange="changeRole('${u.id}', this.value)" ${u.id === currentAdmin.id? 'disabled' : ''}>
-                            <option value="user" ${u.role === 'user'? 'selected' : ''}>User</option>
-                            <option value="admin" ${u.role === 'admin'? 'selected' : ''}>Admin</option>
-                            <option value="dev" ${u.role === 'dev'? 'selected' : ''}>Dev</option>
+                        ${user.status === 'pending' ? `
+                            <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Approve</button>
+                            <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Reject</button>
+                        ` : ''}
+                        <select onchange="changeRole('${user.id}', this.value)">
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="dev" ${user.role === 'dev' ? 'selected' : ''}>Dev</option>
                         </select>
                     </div>
                 </div>
             `).join('');
         }
 
-        // Search & Filter
         function filterUsers() {
             const search = document.getElementById('searchInput').value.toLowerCase();
-            const role = document.getElementById('roleFilter').value;
-            const status = document.getElementById('statusFilter').value;
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
 
-            filteredUsers = allUsers.filter(u => {
-                const matchSearch =!search ||
-                    u.full_name?.toLowerCase().includes(search) ||
-                    u.email?.toLowerCase().includes(search);
-                const matchRole =!role || u.role === role;
-                const matchStatus =!status || u.status === status;
+            const filtered = allUsers.filter(user => {
+                const matchSearch = user.email.toLowerCase().includes(search) || 
+                                   (user.full_name || '').toLowerCase().includes(search);
+                const matchRole = roleFilter === 'all' || user.role === roleFilter;
+                const matchStatus = statusFilter === 'all' || user.status === statusFilter;
                 return matchSearch && matchRole && matchStatus;
             });
 
-            renderAllUsers();
+            renderUsers(filtered);
         }
 
-        function filterByStatus(status) {
-            document.getElementById('statusFilter').value = status === 'all'? '' : status;
-            filterUsers();
-        }
-
-        // Bulk Actions
-        function toggleSelect(id) {
-            if (selectedUsers.has(id)) {
-                selectedUsers.delete(id);
+        function toggleUserSelection(userId) {
+            if (selectedUsers.has(userId)) {
+                selectedUsers.delete(userId);
             } else {
-                selectedUsers.add(id);
+                selectedUsers.add(userId);
             }
             updateBulkActions();
         }
 
         function updateBulkActions() {
-            const bulkDiv = document.getElementById('bulkActions');
-            const count = document.getElementById('selectedCount');
-
+            const bulkActions = document.getElementById('bulkActions');
+            const selectedCount = document.getElementById('selectedCount');
+            
             if (selectedUsers.size > 0) {
-                bulkDiv.classList.add('active');
-                count.textContent = selectedUsers.size;
+                bulkActions.classList.add('active');
+                selectedCount.textContent = selectedUsers.size;
             } else {
-                bulkDiv.classList.remove('active');
+                bulkActions.classList.remove('active');
             }
         }
 
@@ -308,156 +262,141 @@
             updateBulkActions();
         }
 
+        async function approveUser(userId) {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'approved' })
+                .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User approved! ✅', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function rejectUser(userId) {
+            if (!confirm('Reject user ni?')) return;
+            
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'rejected' })
+                .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User rejected! ❌', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function changeRole(userId, newRole) {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`Role updated to ${newRole}! 🎭`, 'success');
+                await loadUsers();
+            }
+        }
+
         async function bulkApprove() {
+            if (selectedUsers.size === 0) return;
             if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
 
-            for (const id of selectedUsers) {
-                await supabaseClient.rpc('update_user_admin', {
-                    user_id: id, new_status: 'approved', new_role: null
-                });
-            }
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'approved' })
+                .in('id', Array.from(selectedUsers));
 
-            addActivity(`Bulk approved ${selectedUsers.size} users`, 'success');
-            showToast(`${selectedUsers.size} users approved!`, 'success');
-            clearSelection();
-            await loadAllData();
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users approved! ✅`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
         }
 
         async function bulkReject() {
+            if (selectedUsers.size === 0) return;
             if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
 
-            for (const id of selectedUsers) {
-                await supabaseClient.rpc('update_user_admin', {
-                    user_id: id, new_status: 'rejected', new_role: null
-                });
-            }
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'rejected' })
+                .in('id', Array.from(selectedUsers));
 
-            addActivity(`Bulk rejected ${selectedUsers.size} users`, 'warning');
-            showToast(`${selectedUsers.size} users rejected!`, 'success');
-            clearSelection();
-            await loadAllData();
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users rejected! ❌`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
         }
 
-        // Export CSV
-        function exportCSV(type) {
-            const data = type === 'pending'
-              ? allUsers.filter(u => u.status === 'pending')
-                : filteredUsers;
+        async function bulkDelete() {
+            if (selectedUsers.size === 0) return;
+            if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
 
+            const { error } = await supabaseClient
+                .from('profiles')
+                .delete()
+                .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users deleted! 🗑️`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        function exportUsers() {
             const csv = [
-                ['Name', 'Email', 'Role', 'Status', 'Created At'].join(','),
-              ...data.map(u => [
-                    u.full_name || '',
-                    u.email,
-                    u.role,
-                    u.status,
-                    new Date(u.created_at).toLocaleString('ms-MY')
-                ].join(','))
+                'Name,Email,Role,Status,Created',
+                ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `users_${type}_${Date.now()}.csv`;
+            a.download = `pahri_users_${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
-
-            addActivity(`Exported ${data.length} users to CSV`, 'info');
-            showToast('CSV exported!', 'success');
-        }
-
-        // Activity Log
-        function addActivity(text, type) {
-            activityLog.unshift({
-                text,
-                type,
-                time: new Date().toLocaleTimeString('ms-MY')
-            });
-            if (activityLog.length > 20) activityLog.pop();
-            renderActivityLog();
-        }
-
-        function renderActivityLog() {
-            const log = document.getElementById('activityLog');
-            log.innerHTML = activityLog.map(a => `
-                <div class="activity-item">
-                    <div>${a.text}</div>
-                    <div class="activity-time">${a.time}</div>
-                </div>
-            `).join('');
-        }
-
-        // Toast Notification
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        async function approveUser(id) {
-            const user = allUsers.find(u => u.id === id);
-            const { error } = await supabaseClient.rpc('update_user_admin', {
-                user_id: id, new_status: 'approved', new_role: null
-            });
-            if (error) return showToast('Error: ' + error.message, 'error');
-
-            addActivity(`Approved user: ${user.email}`, 'success');
-            showToast('User approved!', 'success');
-            await loadAllData();
-        }
-
-        async function rejectUser(id, email) {
-            const isDev = currentAdmin.role === 'dev';
-            const msg = isDev
-              ? `DELETE user ${email}? User akan hilang terus dari database.`
-                : `Reject user ${email}? Status akan jadi rejected.`;
-
-            if (!confirm(msg)) return;
-
-            const { error } = await supabaseClient.rpc('update_user_admin', {
-                user_id: id, new_status: 'rejected', new_role: null
-            });
-
-            if (error) return showToast('Error: ' + error.message, 'error');
-
-            addActivity(`${isDev? 'Deleted' : 'Rejected'} user: ${email}`, 'warning');
-            showToast(isDev? 'User deleted!' : 'User rejected', 'success');
-            await loadAllData();
-        }
-
-        async function changeRole(id, role) {
-            if (!role) return;
-            const user = allUsers.find(u => u.id === id);
-            const { error } = await supabaseClient.rpc('update_user_admin', {
-                user_id: id, new_status: null, new_role: role
-            });
-            if (error) return showToast('Error: ' + error.message, 'error');
-
-            addActivity(`Changed ${user.email} role to ${role}`, 'info');
-            showToast('Role updated!', 'success');
-            await loadAllData();
-        }
-
-        function showChangelog() {
-            document.getElementById('changelogModal').style.display = 'flex';
-        }
-
-        function hideChangelog() {
-            document.getElementById('changelogModal').style.display = 'none';
+            showToast('Users exported! 📥', 'success');
         }
 
         async function logout() {
             await supabaseClient.auth.signOut();
-            window.location.replace('/login');
+            showToast('Logout berjaya!', 'success');
+            setTimeout(() => window.location.replace('/login'), 1000);
         }
 
-        init();
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
     </script>
 </body>
 </html>
