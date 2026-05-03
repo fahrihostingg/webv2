@@ -18,7 +18,7 @@
                 </p>
             </div>
             <div>
-                <button onclick="window.location.href='/profile'" style="margin-right:10px;">Profile</button>
+                <button onclick="window.location.href='/profile'">Profile</button>
                 <button onclick="logout()">Logout</button>
             </div>
         </div>
@@ -27,7 +27,7 @@
 
         <div id="adminPanel" class="card" style="display:none;">
             <h3>Panel Admin - Approve Pengguna</h3>
-            <div id="pendingUsersList"></div>
+            <div id="pendingList"></div>
         </div>
 
         <div class="card">
@@ -35,76 +35,84 @@
             <form id="postForm">
                 <div class="input-group">
                     <label>Title</label>
-                    <input type="text" id="postTitle" placeholder="Judul post" required>
+                    <input type="text" id="title" required>
                 </div>
                 <div class="input-group">
                     <label>Content</label>
-                    <textarea id="postContent" placeholder="Isi content..." required></textarea>
+                    <textarea id="content" required></textarea>
                 </div>
-                <button type="submit">Post Sekarang</button>
+                <button type="submit">Post</button>
             </form>
         </div>
 
         <div class="card">
             <h3>Semua Posts</h3>
-            <div id="postsList"></div>
+            <div id="posts"></div>
         </div>
     </div>
 
     <script>
-        let currentUser = null;
+        let user = null;
 
-        document.addEventListener('DOMContentLoaded', async () => {
-            currentUser = await requireAuth(); // Auto tendang kalau tak approved
-            document.getElementById('userName').textContent = currentUser.full_name || 'User';
-            document.getElementById('userRole').textContent = currentUser.role.toUpperCase();
+        // Load sekali je masa mula
+        (async () => {
+            const { data: { user: authUser } } = await supabaseClient.auth.getUser();
+            if (!authUser) return window.location.replace('/login');
+
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .eq('id', authUser.id)
+                .maybeSingle();
+
+            if (profile?.status !== 'approved') {
+                await supabaseClient.auth.signOut();
+                return window.location.replace('/login');
+            }
+
+            user = profile;
+            userName.textContent = user.full_name || 'User';
+            userRole.textContent = user.role.toUpperCase();
             
-            if (currentUser.role === 'dev' || currentUser.role === 'admin') {
-                document.getElementById('adminPanel').style.display = 'block';
-                loadPendingUsers();
+            if (user.role === 'dev' || user.role === 'admin') {
+                adminPanel.style.display = 'block';
+                loadPending();
             }
             loadPosts();
-        });
+        })();
 
-        async function loadPendingUsers() {
+        async function loadPending() {
             const { data } = await supabaseClient.from('profiles').select('id, full_name').eq('status', 'pending');
-            const list = document.getElementById('pendingUsersList');
-            if (!data?.length) return list.innerHTML = '<p>Tiada user pending.</p>';
-            list.innerHTML = data.map(u => `
-                <div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid #eee;">
-                    <strong>${u.full_name || 'No Name'}</strong>
-                    <button onclick="approveUser('${u.id}')">Approve</button>
-                </div>
-            `).join('');
+            pendingList.innerHTML = !data?.length ? '<p>Tiada pending</p>' : 
+                data.map(u => `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee">
+                    <span>${u.full_name}</span>
+                    <button onclick="approve('${u.id}')">Approve</button>
+                </div>`).join('');
         }
 
-        async function approveUser(id) {
+        async function approve(id) {
             await supabaseClient.from('profiles').update({ status: 'approved' }).eq('id', id);
-            showMessage('User approved!', 'success');
-            loadPendingUsers();
+            showMessage('Approved!', 'success');
+            loadPending();
         }
 
         async function loadPosts() {
             const { data } = await supabaseClient.from('posts').select('*, profiles(full_name)').order('created_at', { ascending: false });
-            document.getElementById('postsList').innerHTML = !data?.length ? '<p>Belum ada post.</p>' : 
+            posts.innerHTML = !data?.length ? '<p>Tiada post</p>' : 
                 data.map(p => `<div class="post-item"><div class="post-title">${p.title}</div><div class="post-content">${p.content}</div><div class="post-meta">Oleh: ${p.profiles?.full_name || 'Unknown'}</div></div>`).join('');
         }
 
-        document.getElementById('postForm').addEventListener('submit', async (e) => {
+        postForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            await supabaseClient.from('posts').insert([{ 
-                title: postTitle.value, 
-                content: postContent.value, 
-                user_id: currentUser.id 
-            }]);
-            showMessage('Post berjaya!', 'success');
+            await supabaseClient.from('posts').insert([{ title: title.value, content: content.value, user_id: user.id }]);
+            showMessage('Posted!', 'success');
             e.target.reset();
             loadPosts();
         });
 
         async function logout() {
             await supabaseClient.auth.signOut();
-            window.location.href = '/login';
+            window.location.replace('/login');
         }
     </script>
 </body>
