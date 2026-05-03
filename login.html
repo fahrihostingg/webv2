@@ -31,10 +31,28 @@
     </div>
 
     <script>
-        // Kalau dah login, tendang dashboard
+        // Check session tapi jangan auto redirect kalau pending
         (async () => {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            if (session) window.location.replace('/dashboard');
+            if (!session) return;
+
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('status, role')
+                .eq('id', session.user.id)
+                .single();
+
+            if (profile?.status === 'approved') {
+                if (profile.role === 'admin' || profile.role === 'dev') {
+                    window.location.replace('/admin');
+                } else {
+                    window.location.replace('/dashboard');
+                }
+            } else {
+                // Pending/rejected - logout terus elak loop
+                await supabaseClient.auth.signOut();
+                showMessage('Akaun belum approve. Tunggu admin.', 'error');
+            }
         })();
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -48,38 +66,30 @@
             const password = document.getElementById('password').value;
 
             try {
-                // 1. Try login
                 const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
                 });
 
                 if (signInError) {
-                    // 2. Check kalau user wujud ke tak kat profiles
+                    // Check kalau email wujud ke tak
                     const { data: profileCheck } = await supabaseClient
                         .from('profiles')
-                        .select('id, status')
+                        .select('status')
                         .eq('email', email)
                         .maybeSingle();
 
                     if (!profileCheck) {
                         throw new Error('Email belum daftar. Sila signup dulu.');
-                    } else if (profileCheck.status === 'pending') {
-                        await supabaseClient.auth.signOut(); // logout balik
-                        throw new Error('Akaun belum approve. Tunggu admin.');
-                    } else if (profileCheck.status === 'rejected') {
-                        await supabaseClient.auth.signOut();
-                        throw new Error('Akaun kena reject. Contact admin.');
                     } else {
-                        // User wujud + approved tapi password salah
-                        throw new Error('Password salah. Cuba lagi.');
+                        throw new Error('Password salah.');
                     }
                 }
 
-                // 3. Login berjaya, check status profile
+                // Check profile status
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
-                    .select('role, status')
+                    .select('role, status, full_name')
                     .eq('id', signInData.user.id)
                     .single();
 
@@ -88,12 +98,17 @@
                     throw new Error('Profile tak jumpa. Contact admin.');
                 }
 
-                if (profile.status !== 'approved') {
+                if (profile.status === 'pending') {
                     await supabaseClient.auth.signOut();
                     throw new Error('Akaun belum approve. Tunggu admin.');
                 }
 
-                // 4. Semua ok, redirect ikut role
+                if (profile.status === 'rejected') {
+                    await supabaseClient.auth.signOut();
+                    throw new Error('Akaun kena reject.');
+                }
+
+                // Approved - redirect
                 showMessage('Login berjaya!', 'success');
                 setTimeout(() => {
                     if (profile.role === 'admin' || profile.role === 'dev') {
@@ -106,11 +121,9 @@
             } catch (err) {
                 console.error('Login error:', err);
                 let msg = err.message;
-                
                 if (msg.includes('Invalid login credentials')) {
                     msg = 'Email atau password salah.';
                 }
-                
                 showMessage(msg, 'error');
             } finally {
                 btn.disabled = false;
