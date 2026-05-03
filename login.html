@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Login - Pahri Platform v1.5.1</title>
+    <title>Login - Pahri Platform v1.5.3</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -13,7 +13,7 @@
         <div class="auth-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <h1 style="font-size: 32px; margin: 0;">⚡ Pahri</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.1 Ultimate</p>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 12px;">Platform v1.5.3 Turbo</p>
             </div>
 
             <h2 style="font-size: 20px;">Login Akaun</h2>
@@ -24,11 +24,11 @@
             <form id="loginForm">
                 <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="email" placeholder="nama@pahri.local" required>
+                    <input type="email" id="email" placeholder="nama@pahri.local" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" placeholder="••••••••" required>
+                    <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
                 </div>
                 <div class="form-group" style="display: flex; align-items: center; gap: 10px;">
                     <input type="checkbox" id="rememberMe" style="width: auto;">
@@ -58,7 +58,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.5.1
+        <span class="dot"></span>v1.5.3
     </div>
 
     <div id="toastContainer"></div>
@@ -75,20 +75,18 @@
             document.getElementById('rememberMe').checked = true;
         }
 
+        // OPTIMIZED: Check auth tanpa block UI
         (async () => {
+            const start = Date.now();
             const { data: { user } } = await supabaseClient.auth.getUser();
+            
             if (user) {
-                // Check status dulu sebelum redirect
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('status')
-                    .eq('id', user.id)
-                    .single();
-                
-                if (profile?.status === 'approved') {
+                // Check cache dulu
+                const auth = await checkAuth(null, true);
+                if (auth.ok) {
+                    console.log(`Auth check: ${Date.now() - start}ms`);
                     window.location.replace('/dashboard');
-                } else {
-                    await supabaseClient.auth.signOut();
+                    return;
                 }
             }
         })();
@@ -107,13 +105,20 @@
             btnLoading.style.display = 'inline';
             loginBtn.disabled = true;
 
+            const start = Date.now();
+
+            // Step 1: Login - 1 query je
             const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
 
             if (error) {
-                showMessage('Login gagal: ' + error.message, 'error');
+                if (error.message.includes('Invalid login credentials')) {
+                    showMessage('Email atau password salah. Check balik.', 'error');
+                } else {
+                    showMessage('Login gagal: ' + error.message, 'error');
+                }
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 loginBtn.disabled = false;
@@ -126,32 +131,47 @@
                 localStorage.removeItem('pahri_email');
             }
 
-            const { data: profile } = await supabaseClient
-               .from('profiles')
-               .select('status, role, full_name')
-               .eq('id', data.user.id)
-               .single();
+            // Step 2: Get profile - select column je, tak select *
+            const { data: profile, error: profileError } = await supabaseClient
+              .from('profiles')
+              .select('id,status,role,full_name')
+              .eq('id', data.user.id)
+              .single();
 
-            if (profile?.status === 'pending') {
-                showMessage('Akaun masih pending. Tunggu admin approve dulu.', 'error');
+            console.log(`Login time: ${Date.now() - start}ms`);
+
+            if (profileError || !profile) {
+                showMessage('Profile tak jumpa. Contact admin.', 'error');
                 await supabaseClient.auth.signOut();
+                clearCache();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 loginBtn.disabled = false;
                 return;
             }
 
-            if (profile?.status === 'rejected') {
-                showMessage('Akaun anda telah ditolak. Contact admin.', 'error');
+            if (profile.status === 'pending') {
+                showMessage('⚠️ Akaun masih PENDING. Tunggu admin approve dulu.', 'error');
                 await supabaseClient.auth.signOut();
+                clearCache();
                 btnText.style.display = 'inline';
                 btnLoading.style.display = 'none';
                 loginBtn.disabled = false;
                 return;
             }
 
-            showToast(`Welcome back, ${profile.full_name || email}!`, 'success');
-            setTimeout(() => window.location.replace('/dashboard'), 1000);
+            if (profile.status === 'rejected') {
+                showMessage('❌ Akaun anda telah DITOLAK. Contact admin.', 'error');
+                await supabaseClient.auth.signOut();
+                clearCache();
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                loginBtn.disabled = false;
+                return;
+            }
+
+            showToast(`Welcome back, ${profile.full_name || email}! 🎉`, 'success');
+            setTimeout(() => window.location.replace('/dashboard'), 800);
         });
 
         async function forgotPassword() {
