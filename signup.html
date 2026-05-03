@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - AmmarBN Platform v1.3.0</title>
+    <title>Register - AmmarBN Platform v1.3.1</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -11,13 +11,13 @@
 <body class="auth-body">
     <div class="auth-container">
         <div class="auth-card">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="font-size: 32px; margin: 0;">⚡ AmmarBN</h1>
-                <p style="margin: 5px 0 0 0; opacity: 0.7;">Platform v1.3.0 Pro</p>
+            <div style="text-align: center; margin-bottom: 25px;">
+                <h1 style="font-size: 28px; margin: 0;">⚡ AmmarBN</h1>
+                <p style="margin: 5px 0 0 0; opacity: 0.7; font-size: 13px;">Platform v1.3.1 Pro</p>
             </div>
 
-            <h2>Daftar Akaun Baru</h2>
-            <p>Akaun perlu approval admin sebelum boleh login</p>
+            <h2 style="font-size: 22px; margin-bottom: 8px;">Daftar Akaun Baru</h2>
+            <p style="font-size: 14px; margin-bottom: 25px;">Akaun perlu approval admin sebelum boleh login</p>
 
             <div id="message" class="message" style="display:none;"></div>
 
@@ -49,31 +49,39 @@
                 Dah ada akaun? <a href="/login">Login sini</a>
             </div>
 
-            <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
-                <p style="font-size: 13px; color: #856404; margin: 0;">
-                    <strong>⚠️ Nota:</strong> Lepas register, akaun anda status "pending". Admin kena approve dulu baru boleh login.
+            <div style="margin-top: 25px; padding: 12px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <p style="font-size: 12px; color: #856404; margin: 0;">
+                    <strong>⚠️ Nota:</strong> Lepas register, status "pending". Admin kena approve dulu baru boleh login.
                 </p>
             </div>
         </div>
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.3.0
+        <span class="dot"></span>v1.3.1
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
-        // Theme
+        // Auto dark mode ikut preference
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
         }
 
+        // Check kalau dah login
+        (async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user) {
+                window.location.replace('/dashboard');
+            }
+        })();
+
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const fullName = document.getElementById('fullName').value;
-            const email = document.getElementById('email').value;
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirmPassword').value;
             const btnText = document.getElementById('btnText');
@@ -85,6 +93,11 @@
                 return;
             }
 
+            if (password.length < 6) {
+                showMessage('Password kena min 6 karakter!', 'error');
+                return;
+            }
+
             btnText.style.display = 'none';
             btnLoading.style.display = 'inline';
             signupBtn.disabled = true;
@@ -93,7 +106,10 @@
                 email: email,
                 password: password,
                 options: {
-                    data: { full_name: fullName }
+                    data: { 
+                        full_name: fullName,
+                        role: 'user'
+                    }
                 }
             });
 
@@ -106,7 +122,9 @@
             }
 
             showToast('Register berjaya! Tunggu admin approve.', 'success');
-            setTimeout(() => window.location.replace('/login'), 2000);
+            showMessage('Akaun dah create! Status: Pending. Tunggu admin approve sebelum login.', 'success');
+            
+            setTimeout(() => window.location.replace('/login'), 3000);
         });
 
         function showMessage(text, type) {
