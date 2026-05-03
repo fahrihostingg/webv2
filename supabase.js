@@ -2,9 +2,6 @@
 const SUPABASE_URL = 'https://gcjoxanfwnmdrphnfbjn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdjam94YW5md25tZHJwaG5mYmpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3MDUyMTUsImV4cCI6MjA5MzI4MTIxNX0.uuWhaeuPnvXKbmAv6zN825y2EKiaQ84k8-aDtZWMbsQ';
 
-const { createClient } = supabase;
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 async function checkAuth() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session) return null;
@@ -26,42 +23,36 @@ async function checkAuth() {
 
 async function requireAuth() {
     const session = await checkAuth();
-    if (!session) {
-        window.location.replace('/login');
-        return null;
-    }
-    return session.user;
-}
+    if (!session) const SUPABASE_URL = 'https://tfqhznjxepgwmuzupnqg.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmcWh6bmp4ZXBnd211enVwbnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU3MDQzNTgsImV4cCI6MjA2MTI4MDM1OH0.0rVy8dEIRFcxLuwN5-AADJDA6dzL1mA4YUqnG_aNsJ4';
 
-async function requireGuest() {
-    const session = await checkAuth();
-    if (session) {
-        window.location.replace('/dashboard');
-        return true;
-    }
-    return false;
-}
-
-async function requireRole(roles) {
-    const user = await requireAuth();
-    if (!user) return null;
-    if (!roles.includes(user.profile.role)) {
-        window.location.replace('/dashboard');
-        return null;
-    }
-    return user;
-}
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
 
 function showMessage(text, type) {
     const msg = document.getElementById('message');
-    if (!msg) return;
+    if (!msg) return alert(text);
     msg.textContent = text;
     msg.className = 'message ' + type;
     msg.style.display = 'block';
-    setTimeout(() => msg.style.display = 'none', 5000);
+    setTimeout(() => msg.style.display = 'none', 4000);
 }
 
-async function signOut() {
-    await supabaseClient.auth.signOut();
-    window.location.replace('/login');
+// Force fetch fresh dari DB setiap kali
+async function getProfile() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return null;
+  
+  const { data } = await supabaseClient
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .maybeSingle();
+    
+  return data;
 }
