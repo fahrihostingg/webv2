@@ -7,87 +7,52 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
-    <style>
-        body { background: #f5f5f5; font-family: Arial; margin: 0; }
-        .navbar { background: #6b5b95; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
-        .navbar h1 { margin: 0; font-size: 20px; }
-        .navbar button { padding: 8px 16px; background: white; color: #6b5b95; border: none; border-radius: 4px; cursor: pointer; }
-        .container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
-        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .welcome { font-size: 24px; margin-bottom: 10px; }
-        .badge { display: inline-block; padding: 4px 12px; background: #6b5b95; color: white; border-radius: 12px; font-size: 12px; }
-        .loading { text-align: center; padding: 50px; color: #999; }
-    </style>
 </head>
-<body>
-    <div class="navbar">
-        <h1>AmmarBN Platform</h1>
-        <div>
-            <span id="userEmail"></span>
-            <button onclick="logout()">Logout</button>
-        </div>
-    </div>
-
-    <div class="container">
-        <div id="loading" class="loading">Loading...</div>
-        
-        <div id="content" style="display:none;">
-            <div class="card">
-                <div class="welcome">Selamat datang, <span id="userName">...</span>!</div>
-                <p>Role: <span class="badge" id="userRole">...</span></p>
-                <p>Status: <span class="badge" style="background:#28a745;" id="userStatus">Approved</span></p>
-            </div>
-
-            <div class="card">
-                <h3>Dashboard User</h3>
-                <p>Ni dashboard untuk user biasa. Letak content kau kat sini.</p>
-                <p id="adminLink" style="display:none;">
-                    <a href="/admin">→ Pergi ke Admin Panel</a>
+<body class="dashboard-body">
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div>
+                <h1>AmmarBN Platform</h1>
+                <p>Selamat datang, <span id="userName">...</span>! 
+                   <span class="badge" id="userRole"></span>
                 </p>
             </div>
+            <div>
+                <button id="adminBtn" style="display:none;" onclick="window.location.href='/admin'">Admin Panel</button>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div id="message" class="message" style="display:none;"></div>
+
+        <div class="welcome-card">
+            <h2>Dashboard Utama</h2>
+            <p>Platform siap digunakan. Akses admin untuk urus user.</p>
+            <div id="pendingNotice" style="display:none;" class="message error">
+                Akaun anda masih pending approval. Tunggu admin approve.
+            </div>
+            <button class="btn-primary" onclick="showMessage('Feature coming soon!', 'success')">Mula Projek</button>
         </div>
     </div>
 
     <script>
-        let currentUser = null;
-
         async function initDashboard() {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            
-            // Takde session = tendang login
-            if (!session) {
-                window.location.replace('/login');
-                return;
+            const { ok, profile, redirect, msg } = await checkAuth();
+            if (!ok) {
+                if (msg) showMessage(msg, 'error');
+                return setTimeout(() => window.location.replace(redirect), 1500);
             }
 
-            // Check profile + status
-            const { data: profile, error } = await supabaseClient
-                .from('profiles')
-                .select('id, full_name, email, role, status')
-                .eq('id', session.user.id)
-                .single();
-
-            // Takde profile atau bukan approved = logout
-            if (error || !profile || profile.status !== 'approved') {
-                await supabaseClient.auth.signOut();
-                alert('Akaun belum approve atau kena reject.');
-                window.location.replace('/login');
-                return;
-            }
-
-            // Approved - load dashboard
-            currentUser = profile;
             document.getElementById('userName').textContent = profile.full_name || profile.email;
-            document.getElementById('userEmail').textContent = profile.email;
             document.getElementById('userRole').textContent = profile.role.toUpperCase();
             
-            // Kalau admin/dev, tunjuk link ke admin panel
-            if (profile.role === 'admin' || profile.role === 'dev') {
-                document.getElementById('adminLink').style.display = 'block';
+            if (['admin', 'dev'].includes(profile.role)) {
+                document.getElementById('adminBtn').style.display = 'inline-block';
             }
 
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('content').style.display = 'block';
+            if (profile.status === 'pending') {
+                document.getElementById('pendingNotice').style.display = 'block';
+            }
         }
 
         async function logout() {
