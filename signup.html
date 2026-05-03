@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -35,6 +36,7 @@
     </div>
 
     <script>
+        // Kalau dah login, tendang dashboard
         (async () => {
             const { ok } = await checkAuth();
             if (ok) window.location.replace('/dashboard');
@@ -46,8 +48,8 @@
             btn.disabled = true;
             btn.textContent = 'Daftar...';
 
-            const fullName = document.getElementById('fullName').value;
-            const email = document.getElementById('email').value;
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
 
             try {
@@ -61,9 +63,9 @@
                 });
                 
                 if (signUpError) throw signUpError;
-                if (!signUpData.user) throw new Error('Signup gagal');
+                if (!signUpData.user) throw new Error('Signup gagal. Cuba lagi.');
 
-                // 2. Manual insert ke profiles lepas signup
+                // 2. Manual insert ke profiles lepas dapat user.id
                 const { error: profileError } = await supabaseClient
                     .from('profiles')
                     .insert({
@@ -76,7 +78,6 @@
 
                 if (profileError) {
                     console.error('Profile insert error:', profileError);
-                    // Kalau profile gagal, delete user auth supaya tak tergantung
                     throw new Error('Gagal buat profile: ' + profileError.message);
                 }
 
@@ -85,7 +86,17 @@
 
             } catch (err) {
                 console.error('Signup error:', err);
-                showMessage(err.message, 'error');
+                let msg = err.message;
+                
+                if (msg.includes('rate limit')) {
+                    msg = 'Terlalu banyak cuba. Tunggu 1 jam atau guna email lain.';
+                } else if (msg.includes('already registered') || msg.includes('already exists')) {
+                    msg = 'Email dah daftar. Sila login.';
+                } else if (msg.includes('Password should be')) {
+                    msg = 'Password kena 6 huruf ke atas.';
+                }
+                
+                showMessage(msg, 'error');
                 btn.disabled = false;
                 btn.textContent = 'Daftar';
             }
