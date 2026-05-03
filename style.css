@@ -6,26 +6,37 @@
 }
 
 :root {
+:root {
     --primary: #667eea;
-    --primary-dark: #5568d3;
-    --secondary: #764ba2;
-    --success: #28a745;
-    --danger: #dc3545;
-    --warning: #ffc107;
-    --info: #17a2b8;
-    --dark: #0f0f1e;
-    --card-dark: #1a1a2e;
-    --text-dark: #333;
-    --text-light: #666;
-    --border: #e8e8e8;
-    --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    --primary-dark: #5a67d8;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --bg: #f5f7fa;
+    --card-bg: #ffffff;
+    --text: #1a1a1a;
+    --text-light: #666666;
+    --border: #e5e7eb;
+    --shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+body.dark-mode {
+    --bg: #0f172a;
+    --card-bg: #1e293b;
+    --text: #f1f5f9;
+    --text-light: #94a3b8;
+    --border: #334155;
+    --shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
 body {
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    line-height: 1.6;
-    transition: all 0.3s ease;
+    background: var(--bg);
+    color: var(--text);
+}
 }
 
 /* === Auth Pages v1.5.0 === */
