@@ -3,131 +3,400 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - AmmarBN Platform v1.2.1</title>
+    <title>Admin Panel - Pahri v1.4.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="supabase.js"></script>
 </head>
-<body class="dashboard-body">
+<body class="admin-body">
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>AmmarBN Platform</h1>
-                <p>Selamat datang, <span id="userName">...</span>!
-                   <span class="badge" id="userRole"></span>
-                </p>
+                <h1>🔧 Pahri Admin Panel</h1>
+                <p id="adminWelcome">Loading...</p>
             </div>
             <div>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓</button>
-                <button class="changelog-btn" onclick="showChangelog()">📋 Changelog</button>
-                <button id="adminBtn" style="display:none;" onclick="window.location.href='/admin'">⚡ Admin</button>
-                <button onclick="logout()">Logout</button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
+                <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <div id="message" class="message" style="display:none;"></div>
+        <div class="stats" id="statsContainer">
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+            <div class="skeleton skeleton-card"></div>
+        </div>
 
-        <div class="welcome-card">
-            <h2>Dashboard Utama</h2>
-            <p>Platform siap digunakan. Akses admin untuk urus user.</p>
-            <div id="pendingNotice" style="display:none;" class="message error">
-                Akaun anda masih pending approval. Tunggu admin approve.
+        <div class="card">
+            <h3>📈 User Growth Analytics</h3>
+            <canvas id="userChart" style="max-height: 300px;"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>🔍 Search & Filter Users</h3>
+            <div class="search-bar">
+                <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau email..." oninput="filterUsers()">
+                <select id="roleFilter" class="filter-select" onchange="filterUsers()">
+                    <option value="all">Semua Role</option>
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="dev">Dev</option>
+                </select>
+                <select id="statusFilter" class="filter-select" onchange="filterUsers()">
+                    <option value="all">Semua Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+                <button class="btn-export" onclick="exportUsers()">📥 Export CSV</button>
             </div>
-            <button class="btn-primary" onclick="showToast('Feature coming soon!', 'info')">🚀 Mula Projek</button>
+
+            <div class="bulk-actions" id="bulkActions">
+                <span><strong id="selectedCount">0</strong> user dipilih</span>
+                <div>
+                    <button onclick="bulkApprove()">✅ Approve All</button>
+                    <button onclick="bulkReject()">❌ Reject All</button>
+                    <button onclick="bulkDelete()">🗑️ Delete All</button>
+                    <button onclick="clearSelection()">✖️ Clear</button>
+                </div>
+            </div>
+
+            <div id="usersList">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
         </div>
     </div>
 
-    <div class="version-badge" onclick="showChangelog()">
-        <span class="dot"></span>v1.2.1 Pro
-    </div>
-
-    <div id="changelogModal" class="changelog-modal" onclick="hideChangelog()">
-        <div class="changelog-content" onclick="event.stopPropagation()">
-            <h3>🚀 Changelog v1.2.1 Pro</h3>
-            <ul>
-                <li><strong>Dark Mode:</strong> Toggle theme gelap/terang, auto save</li>
-                <li><strong>Search & Filter:</strong> Cari user real-time</li>
-                <li><strong>Bulk Actions:</strong> Select ramai, approve/reject sekali jalan</li>
-                <li><strong>Export CSV:</strong> Download data ke Excel</li>
-                <li><strong>Activity Log:</strong> Track semua action admin</li>
-                <li><strong>Toast Notifications:</strong> Notif slide cantik dari kanan</li>
-                <li><strong>Skeleton Loading:</strong> Loading animation smooth</li>
-                <li><strong>Stats Animation:</strong> Counter naik dengan animation</li>
-                <li><strong>Responsive:</strong> Mobile friendly 100%</li>
-            </ul>
-            <h4>🔜 v1.3.0 Coming</h4>
-            <ul>
-                <li>Email notification</li>
-                <li>User analytics chart</li>
-                <li>Role permissions matrix</li>
-                <li>2FA authentication</li>
-            </ul>
-            <button class="btn-primary" onclick="hideChangelog()">Tutup</button>
-        </div>
+    <div class="version-badge">
+        <span class="dot"></span>v1.4.0
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
-        const APP_VERSION = '1.2.1';
-
-        function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-            showToast('Theme changed!', 'info');
-        }
+        let allUsers = [];
+        let selectedUsers = new Set();
+        let currentAdmin = null;
 
         if (localStorage.getItem('theme') === 'dark') {
             document.body.classList.add('dark-mode');
         }
 
-        async function initDashboard() {
-            const { ok, profile, redirect, msg } = await checkAuth();
-            if (!ok) {
-                if (msg) showToast(msg, 'error');
-                return setTimeout(() => window.location.replace(redirect), 1500);
-            }
-
-            document.getElementById('userName').textContent = profile.full_name || profile.email;
-            document.getElementById('userRole').textContent = profile.role.toUpperCase();
-
-            if (['admin', 'dev'].includes(profile.role)) {
-                document.getElementById('adminBtn').style.display = 'inline-block';
-            }
-
-            if (profile.status === 'pending') {
-                document.getElementById('pendingNotice').style.display = 'block';
-            }
-
-            console.log('AmmarBN Platform v' + APP_VERSION);
+        function toggleTheme() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
+            showToast('Tema ditukar!', 'success');
         }
 
-        function showChangelog() {
-            document.getElementById('changelogModal').style.display = 'flex';
+        (async () => {
+            const auth = await checkAuth('admin');
+            if (!auth.ok) {
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
+                return;
+            }
+
+            currentAdmin = auth.profile;
+            document.getElementById('adminWelcome').textContent = `Welcome, ${currentAdmin.full_name || currentAdmin.email}`;
+            
+            await loadStats();
+            await loadUsers();
+            initChart();
+        })();
+
+        async function loadStats() {
+            const { count: totalUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true });
+
+            const { count: pendingUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'pending');
+
+            const { count: adminUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('role', 'admin');
+
+            const { count: approvedUsers } = await supabaseClient
+                .from('profiles')
+                .select('*', { count: 'exact', head: true })
+                .eq('status', 'approved');
+
+            document.getElementById('statsContainer').innerHTML = `
+                <div class="stat-box">
+                    <h3>${totalUsers || 0}</h3>
+                    <p>👥 Total Users</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${pendingUsers || 0}</h3>
+                    <p>⏳ Pending Approval</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${adminUsers || 0}</h3>
+                    <p>👑 Admins</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${approvedUsers || 0}</h3>
+                    <p>✅ Approved</p>
+                </div>
+            `;
         }
 
-        function hideChangelog() {
-            document.getElementById('changelogModal').style.display = 'none';
+        function initChart() {
+            const ctx = document.getElementById('userChart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'New Users',
+                        data: [12, 19, 15, 25, 22, 30],
+                        backgroundColor: 'rgba(102,126,234,0.8)',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        async function loadUsers() {
+            const { data: users, error } = await supabaseClient
+                .from('profiles')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                showToast('Error load users: ' + error.message, 'error');
+                return;
+            }
+
+            allUsers = users || [];
+            renderUsers(allUsers);
+        }
+
+        function renderUsers(users) {
+            const list = document.getElementById('usersList');
+            
+            if (users.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada user dijumpai</p>';
+                return;
+            }
+
+            list.innerHTML = users.map(user => `
+                <div class="user-card">
+                    <input type="checkbox" class="user-checkbox" 
+                           value="${user.id}" 
+                           ${selectedUsers.has(user.id) ? 'checked' : ''}
+                           onchange="toggleUserSelection('${user.id}')">
+                    <div class="user-info">
+                        <strong>${user.full_name || 'No Name'}</strong>
+                        <small>${user.email}</small>
+                        <span class="badge badge-${user.role}">${user.role}</span>
+                        <span class="badge badge-${user.status}">${user.status}</span>
+                    </div>
+                    <div class="user-actions">
+                        ${user.status === 'pending' ? `
+                            <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Approve</button>
+                            <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Reject</button>
+                        ` : ''}
+                        <select onchange="changeRole('${user.id}', this.value)">
+                            <option value="user" ${user.role === 'user' ? 'selected' : ''}>User</option>
+                            <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Admin</option>
+                            <option value="dev" ${user.role === 'dev' ? 'selected' : ''}>Dev</option>
+                        </select>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const filtered = allUsers.filter(user => {
+                const matchSearch = user.email.toLowerCase().includes(search) || 
+                                   (user.full_name || '').toLowerCase().includes(search);
+                const matchRole = roleFilter === 'all' || user.role === roleFilter;
+                const matchStatus = statusFilter === 'all' || user.status === statusFilter;
+                return matchSearch && matchRole && matchStatus;
+            });
+
+            renderUsers(filtered);
+        }
+
+        function toggleUserSelection(userId) {
+            if (selectedUsers.has(userId)) {
+                selectedUsers.delete(userId);
+            } else {
+                selectedUsers.add(userId);
+            }
+            updateBulkActions();
+        }
+
+        function updateBulkActions() {
+            const bulkActions = document.getElementById('bulkActions');
+            const selectedCount = document.getElementById('selectedCount');
+            
+            if (selectedUsers.size > 0) {
+                bulkActions.classList.add('active');
+                selectedCount.textContent = selectedUsers.size;
+            } else {
+                bulkActions.classList.remove('active');
+            }
+        }
+
+        function clearSelection() {
+            selectedUsers.clear();
+            document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+            updateBulkActions();
+        }
+
+        async function approveUser(userId) {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'approved' })
+                .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User approved! ✅', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function rejectUser(userId) {
+            if (!confirm('Reject user ni?')) return;
+            
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'rejected' })
+                .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User rejected! ❌', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function changeRole(userId, newRole) {
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`Role updated to ${newRole}! 🎭`, 'success');
+                await loadUsers();
+            }
+        }
+
+        async function bulkApprove() {
+            if (selectedUsers.size === 0) return;
+            if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'approved' })
+                .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users approved! ✅`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function bulkReject() {
+            if (selectedUsers.size === 0) return;
+            if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .update({ status: 'rejected' })
+                .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users rejected! ❌`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function bulkDelete() {
+            if (selectedUsers.size === 0) return;
+            if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
+
+            const { error } = await supabaseClient
+                .from('profiles')
+                .delete()
+                .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users deleted! 🗑️`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        function exportUsers() {
+            const csv = [
+                'Name,Email,Role,Status,Created',
+                ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.created_at}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pahri_users_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Users exported! 📥', 'success');
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            showToast('Logout berjaya!', 'success');
+            setTimeout(() => window.location.replace('/login'), 1000);
         }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-
+            
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-
+            
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
-
-        async function logout() {
-            await supabaseClient.auth.signOut();
-            window.location.replace('/login');
-        }
-
-        initDashboard();
     </script>
 </body>
 </html>
