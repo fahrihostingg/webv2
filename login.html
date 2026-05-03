@@ -3,133 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - AmmarBN Platform</title>
+    <title>Login - AmmarBN Platform v1.3.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
 </head>
-<body>
-    <div class="container">
-        <div class="content">
+<body class="auth-body">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 32px; margin: 0;">⚡ AmmarBN</h1>
+                <p style="margin: 5px 0 0 0; opacity: 0.7;">Platform v1.3.0 Pro</p>
+            </div>
+            
+            <h2>Login Akaun</h2>
+            <p>Masuk ke dashboard admin</p>
+
             <div id="message" class="message" style="display:none;"></div>
-            <h2>Login</h2>
+
             <form id="loginForm">
-                <div class="input-group">
+                <div class="form-group">
                     <label>Email</label>
-                    <input type="email" id="email" autocomplete="email" required>
+                    <input type="email" id="email" placeholder="nama@app.local" required>
                 </div>
-                <div class="input-group">
+                <div class="form-group">
                     <label>Password</label>
-                    <input type="password" id="password" autocomplete="current-password" required>
+                    <input type="password" id="password" placeholder="••••••••" required>
                 </div>
-                <button type="submit" id="loginBtn">Login</button>
+                <button type="submit" class="btn-primary" id="loginBtn">
+                    <span id="btnText">Login Sekarang</span>
+                    <span id="btnLoading" style="display:none;">⏳ Loading...</span>
+                </button>
             </form>
-            <div class="link-text">
-                Belum ada akaun? <a href="/signup">Daftar di sini</a>
+
+            <div class="auth-link">
+                Belum ada akaun? <a href="/signup">Register sini</a>
+            </div>
+
+            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e8e8e8; text-align: center;">
+                <p style="font-size: 12px; color: #999; margin: 0;">
+                    Demo: devutama@app.local / adminutama@app.local<br>
+                    Password: AmmarBN123! / AdminBN123!
+                </p>
             </div>
         </div>
     </div>
 
+    <div class="version-badge">
+        <span class="dot"></span>v1.3.0
+    </div>
+
+    <div id="toastContainer"></div>
+
     <script>
-        // Check session tapi jangan auto redirect kalau pending
-        (async () => {
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            if (!session) return;
-
-            const { data: profile } = await supabaseClient
-                .from('profiles')
-                .select('status, role')
-                .eq('id', session.user.id)
-                .single();
-
-            if (profile?.status === 'approved') {
-                if (profile.role === 'admin' || profile.role === 'dev') {
-                    window.location.replace('/admin');
-                } else {
-                    window.location.replace('/dashboard');
-                }
-            } else {
-                // Pending/rejected - logout terus elak loop
-                await supabaseClient.auth.signOut();
-                showMessage('Akaun belum approve. Tunggu admin.', 'error');
-            }
-        })();
+        // Theme
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = document.getElementById('loginBtn');
-            const originalText = btn.textContent;
-            btn.disabled = true;
-            btn.textContent = 'Login...';
-
-            const email = document.getElementById('email').value.trim();
+            
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const btnText = document.getElementById('btnText');
+            const btnLoading = document.getElementById('btnLoading');
+            const loginBtn = document.getElementById('loginBtn');
 
-            try {
-                const { data: signInData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            loginBtn.disabled = true;
 
-                if (signInError) {
-                    // Check kalau email wujud ke tak
-                    const { data: profileCheck } = await supabaseClient
-                        .from('profiles')
-                        .select('status')
-                        .eq('email', email)
-                        .maybeSingle();
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
 
-                    if (!profileCheck) {
-                        throw new Error('Email belum daftar. Sila signup dulu.');
-                    } else {
-                        throw new Error('Password salah.');
-                    }
-                }
-
-                // Check profile status
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('profiles')
-                    .select('role, status, full_name')
-                    .eq('id', signInData.user.id)
-                    .single();
-
-                if (profileError || !profile) {
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Profile tak jumpa. Contact admin.');
-                }
-
-                if (profile.status === 'pending') {
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Akaun belum approve. Tunggu admin.');
-                }
-
-                if (profile.status === 'rejected') {
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Akaun kena reject.');
-                }
-
-                // Approved - redirect
-                showMessage('Login berjaya!', 'success');
-                setTimeout(() => {
-                    if (profile.role === 'admin' || profile.role === 'dev') {
-                        window.location.replace('/admin');
-                    } else {
-                        window.location.replace('/dashboard');
-                    }
-                }, 500);
-
-            } catch (err) {
-                console.error('Login error:', err);
-                let msg = err.message;
-                if (msg.includes('Invalid login credentials')) {
-                    msg = 'Email atau password salah.';
-                }
-                showMessage(msg, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.textContent = originalText;
+            if (error) {
+                showMessage('Login gagal: ' + error.message, 'error');
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                loginBtn.disabled = false;
+                return;
             }
+
+            // Check status
+            const { data: profile } = await supabaseClient
+                .from('profiles')
+                .select('status, role')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profile?.status === 'pending') {
+                showMessage('Akaun masih pending. Tunggu admin approve.', 'error');
+                await supabaseClient.auth.signOut();
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                loginBtn.disabled = false;
+                return;
+            }
+
+            if (profile?.status === 'rejected') {
+                showMessage('Akaun anda telah ditolak.', 'error');
+                await supabaseClient.auth.signOut();
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+                loginBtn.disabled = false;
+                return;
+            }
+
+            showToast('Login berjaya! Redirect...', 'success');
+            setTimeout(() => window.location.replace('/dashboard'), 1000);
         });
-    </script>
-</body>
-</html>
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + type;
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 5000);
+        }
+
+        function showToast(message, type = 'info') {
+      
