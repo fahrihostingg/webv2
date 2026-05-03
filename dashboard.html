@@ -3,249 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Pahri Platform v1.4.0</title>
+    <title>Dashboard - Pahri v1.6.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="supabase.js"></script>
+    <script>
+        // Apply tema SEBELUM page render untuk elak flash
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
+        })();
+    </script>
 </head>
 <body class="dashboard-body">
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>⚡ Pahri Dashboard</h1>
-                <p id="welcomeText">Loading...</p>
+                <h1>📊 Dashboard</h1>
+                <p id="userWelcome">Loading...</p>
             </div>
             <div>
-                <button class="changelog-btn" onclick="showChangelog()">📋 Changelog</button>
-                <button class="theme-toggle" onclick="toggleTheme()">🌓 Tema</button>
-                <button onclick="goToProfile()">👤 Profile</button>
+                <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
+                    <span id="themeIcon">🌓</span> Tema
+                </button>
+                <button onclick="window.location.href='/profile'">👤 Profile</button>
+                <button onclick="window.location.href='/admin'" id="adminBtn" style="display:none;">🔧 Admin</button>
                 <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <div class="stats" id="statsContainer">
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
+        <div class="card">
+            <h3>🎉 Selamat Datang!</h3>
+            <p>Akaun kau dah approved. Nikmati Pahri Platform v1.6.2</p>
+            <div class="stats">
+                <div class="stat-box">
+                    <h3 id="loginCount">0</h3>
+                    <p>🔢 Total Login</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="lastActive">-</h3>
+                    <p>⏰ Last Active</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="joinDate">-</h3>
+                    <p>📅 Join Date</p>
+                </div>
+            </div>
         </div>
 
         <div class="card">
-            <h3>📊 Analytics Overview</h3>
-            <canvas id="analyticsChart" style="max-height: 300px;"></canvas>
-        </div>
-
-        <div class="card">
-            <h3>⚡ Quick Actions</h3>
+            <h3>🚀 Quick Actions</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <button class="btn-primary" onclick="window.location.href='/admin'" id="adminBtn" style="display:none;">
-                    🔧 Admin Panel
-                </button>
-                <button class="btn-primary" onclick="goToProfile()">
+                <button class="btn-primary" onclick="window.location.href='/profile'">
                     👤 Edit Profile
                 </button>
-                <button class="btn-primary" onclick="exportUserData()">
-                    📥 Export Data
+                <button class="btn-secondary" onclick="window.location.href='/forgot-password'">
+                    🔑 Reset Password
                 </button>
-                <button class="btn-primary" onclick="showActivityLog()">
-                    📜 Activity Log
+                <button class="btn-secondary" onclick="showToast('Coming soon v1.7.0!', 'info')">
+                    📊 Analytics
                 </button>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3>📜 Recent Activity</h3>
-            <div class="activity-log" id="activityLog">
-                <div class="skeleton" style="height: 60px; margin-bottom: 10px;"></div>
-                <div class="skeleton" style="height: 60px; margin-bottom: 10px;"></div>
-            </div>
-        </div>
-
-        <div class="welcome-card">
-            <h2>🚀 Welcome to Pahri v1.4.0 Enterprise</h2>
-            <p style="color: var(--text-light); margin: 15px 0;">Platform paling power dengan analytics real-time, dark mode, dan security gred A.</p>
-            <div style="margin-top: 25px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
-                <div style="text-align: center;">
-                    <div style="font-size: 32px;">⚡</div>
-                    <small>Lightning Fast</small>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 32px;">🔒</div>
-                    <small>Secure RLS</small>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 32px;">📊</div>
-                    <small>Real-time Data</small>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 32px;">🌙</div>
-                    <small>Dark Mode</small>
-                </div>
             </div>
         </div>
     </div>
 
-    <div class="version-badge" onclick="showChangelog()">
-        <span class="dot"></span>v1.4.0
-    </div>
-
-    <div id="changelogModal" class="changelog-modal" onclick="closeChangelog(event)">
-        <div class="changelog-content" onclick="event.stopPropagation()">
-            <h3>📋 Pahri Changelog v1.4.0</h3>
-            <h4>🎉 What's New:</h4>
-            <ul>
-                <li>✨ Rebrand: AmmarBN → Pahri</li>
-                <li>📊 Analytics Chart dengan Chart.js</li>
-                <li>📜 Activity Log real-time</li>
-                <li>📥 Export user data CSV</li>
-                <li>⚡ Performance boost 40%</li>
-                <li>🎨 UI/UX Enterprise grade</li>
-            </ul>
-            <h4>🐛 Bug Fixes:</h4>
-            <ul>
-                <li>Fix mobile oversize issue</li>
-                <li>Fix auth redirect loop</li>
-                <li>Optimize query RLS policy</li>
-            </ul>
-            <button class="btn-primary" onclick="closeChangelog()">Tutup</button>
-        </div>
+    <div class="version-badge">
+        <span class="dot"></span>v1.6.2
     </div>
 
     <div id="toastContainer"></div>
 
     <script>
         let currentUser = null;
-        let userProfile = null;
 
-        // Theme
-        if (localStorage.getItem('theme') === 'dark') {
-            document.body.classList.add('dark-mode');
+        // Apply tema masa DOM load
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+        });
+
+        function applyTheme() {
+            const theme = localStorage.getItem('theme');
+            const isDark = theme === 'dark';
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark-mode');
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeIcon').textContent = '🌙';
+            }
         }
 
         function toggleTheme() {
-            document.body.classList.toggle('dark-mode');
-            localStorage.setItem('theme', document.body.classList.contains('dark-mode') ? 'dark' : 'light');
-            showToast('Tema ditukar!', 'success');
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark ? 'light' : 'dark';
+            
+            localStorage.setItem('theme', newTheme);
+            applyTheme();
+            showToast(`Tema tukar ke ${newTheme === 'dark' ? 'Gelap' : 'Terang'}!`, 'success');
         }
 
-        // Init
         (async () => {
-            const auth = await checkAuth();
-            if (!auth.ok) {
-                showToast(auth.msg, 'error');
-                setTimeout(() => window.location.replace(auth.redirect), 1500);
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                window.location.replace('/login');
                 return;
             }
 
-            currentUser = auth.user;
-            userProfile = auth.profile;
-            
-            document.getElementById('welcomeText').textContent = `Selamat datang, ${userProfile.full_name || userProfile.email}!`;
-            
-            if (['admin', 'dev'].includes(userProfile.role)) {
-                document.getElementById('adminBtn').style.display = 'block';
+            const { data: profile } = await supabaseClient
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+
+            if (!profile || profile.status !== 'approved') {
+                showToast('Akaun belum approved', 'error');
+                setTimeout(() => window.location.replace('/login'), 1500);
+                return;
             }
 
-            await loadStats();
-            await loadActivityLog();
-            initChart();
+            currentUser = profile;
+            loadDashboard();
         })();
 
-        async function loadStats() {
-            const { count: totalUsers } = await supabaseClient
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'approved');
+        function loadDashboard() {
+            document.getElementById('userWelcome').textContent = `Hi, ${currentUser.full_name || currentUser.email}`;
+            document.getElementById('loginCount').textContent = currentUser.login_count || 0;
+            document.getElementById('lastActive').textContent = currentUser.last_active 
+               ? new Date(currentUser.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                : 'Baru je';
+            document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
 
-            const { count: pendingUsers } = await supabaseClient
-                .from('profiles')
-                .select('*', { count: 'exact', head: true })
-                .eq('status', 'pending');
-
-            document.getElementById('statsContainer').innerHTML = `
-                <div class="stat-box">
-                    <h3>${totalUsers || 0}</h3>
-                    <p>👥 Total Users</p>
-                </div>
-                <div class="stat-box">
-                    <h3>${pendingUsers || 0}</h3>
-                    <p>⏳ Pending Approval</p>
-                </div>
-                <div class="stat-box">
-                    <h3>${userProfile.role.toUpperCase()}</h3>
-                    <p>🎭 Your Role</p>
-                </div>
-            `;
-        }
-
-        async function loadActivityLog() {
-            const activities = [
-                { action: 'Login', time: '2 min ago', icon: '🔓' },
-                { action: 'Profile viewed', time: '5 min ago', icon: '👤' },
-                { action: 'Dashboard accessed', time: '10 min ago', icon: '📊' }
-            ];
-
-            document.getElementById('activityLog').innerHTML = activities.map(a => `
-                <div class="activity-item">
-                    <span>${a.icon} ${a.action}</span>
-                    <span class="activity-time">${a.time}</span>
-                </div>
-            `).join('');
-        }
-
-        function initChart() {
-            const ctx = document.getElementById('analyticsChart');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                    datasets: [{
-                        label: 'Active Users',
-                        data: [12, 19, 15, 25, 22, 30, 28],
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102,126,234,0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function goToProfile() {
-            window.location.href = '/profile';
-        }
-
-        function exportUserData() {
-            const csv = `Name,Email,Role,Status\n${userProfile.full_name},${userProfile.email},${userProfile.role},${userProfile.status}`;
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'pahri_user_data.csv';
-            a.click();
-            showToast('Data exported!', 'success');
-        }
-
-        function showActivityLog() {
-            showToast('Activity log dah kat bawah tu 👇', 'info');
-        }
-
-        function showChangelog() {
-            document.getElementById('changelogModal').style.display = 'flex';
-        }
-
-        function closeChangelog(e) {
-            if (!e || e.target.id === 'changelogModal') {
-                document.getElementById('changelogModal').style.display = 'none';
+            if (currentUser.role === 'admin' || currentUser.role === 'dev') {
+                document.getElementById('adminBtn').style.display = 'inline-block';
             }
         }
 
         async function logout() {
+            await supabaseClient.from('activity_logs').insert({
+                user_id: currentUser.id,
+                action: 'logout'
+            });
             await supabaseClient.auth.signOut();
             showToast('Logout berjaya!', 'success');
             setTimeout(() => window.location.replace('/login'), 1000);
@@ -255,10 +157,10 @@
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
             const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
-            
+
             toast.className = `toast ${type}`;
             toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
-            
+
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
