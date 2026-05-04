@@ -807,3 +807,38 @@ table tr:hover {
         padding: 6px 12px;
     }
 }
+.tab-btn {
+    padding: 15px 20px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-light);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.tab-btn:hover { background: var(--bg); }
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+}
+.modal.active { display: flex; }
+.modal-content {
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 12px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
