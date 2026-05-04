@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Pahri v1.7.1</title>
+    <title>Admin Panel - Pahri v1.7.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -21,7 +22,7 @@
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>🔧 Pahri Admin Panel <span id="roleTag"></span></h1>
+                <h1>🔧 Pahri Admin Panel <span id="roleTag"></span> <span class="badge badge-info" style="font-size:12px;">v1.7.2</span></h1>
                 <p id="adminWelcome">Loading...</p>
             </div>
             <div>
@@ -153,6 +154,11 @@
                     <label>Site Name</label>
                     <input type="text" id="siteName" placeholder="Pahri Platform">
                 </div>
+                <div class="form-group">
+                    <label>App Version</label>
+                    <input type="text" id="appVersion" placeholder="v1.7.2">
+                    <small style="color: var(--text-light);">Tukar ni untuk update version kat semua page</small>
+                </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="maintenanceMode">
                     <label for="maintenanceMode">Maintenance Mode - Block semua user kecuali DEV</label>
@@ -244,7 +250,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.7.1
+        <span class="dot"></span>v1.7.2
     </div>
 
     <div id="toastContainer"></div>
@@ -427,9 +433,9 @@
             const ctx = document.getElementById('userChart');
             
             const { data: users } = await supabaseClient
-            .from('profiles')
-            .select('created_at, status, is_banned')
-            .order('created_at', { ascending: true });
+           .from('profiles')
+           .select('created_at, status, is_banned')
+           .order('created_at', { ascending: true });
 
             if (!users || users.length === 0) {
                 ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
@@ -496,10 +502,10 @@
 
         async function loadActivityLogs() {
             const { data: logs } = await supabaseClient
-            .from('activity_logs')
-            .select('*, profiles(full_name, email)')
-            .order('created_at', { ascending: false })
-            .limit(100);
+           .from('activity_logs')
+           .select('*, profiles(full_name, email)')
+           .order('created_at', { ascending: false })
+           .limit(100);
 
             const tbody = document.getElementById('activityLogs');
             if (!logs || logs.length === 0) {
@@ -534,9 +540,9 @@
 
         async function loadUsers() {
             const { data: users, error } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .order('created_at', { ascending: false });
+           .from('profiles')
+           .select('*')
+           .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error load users: ' + error.message, 'error');
@@ -594,7 +600,7 @@
                 const isDev = user.role === 'dev';
                 const isBanned = user.is_banned;
                 const lastActive = user.last_active 
-                ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+               ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
                     : 'Never';
                 
                 return `
@@ -686,13 +692,13 @@
 
         async function approveUser(userId) {
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({
+           .from('profiles')
+           .update({
                   status: 'approved',
                   approved_at: new Date().toISOString(),
                   approved_by: currentAdmin.id
               })
-            .eq('id', userId);
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -707,9 +713,9 @@
             if (!confirm('Reject user ni?')) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ status: 'rejected' })
-            .eq('id', userId);
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -736,9 +742,9 @@
             }
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ role: newRole })
-            .eq('id', userId);
+           .from('profiles')
+           .update({ role: newRole })
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -754,14 +760,14 @@
             if (!reason) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ 
+           .from('profiles')
+           .update({ 
                     is_banned: true,
                     banned_reason: reason,
                     banned_at: new Date().toISOString(),
                     banned_by: currentAdmin.id
                 })
-            .eq('id', userId);
+           .eq('id', userId);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -776,8 +782,8 @@
             if (!confirm('Unban user ni?')) return;
 
             const { error } = await supabaseClient
-            .from('profiles')
-            .update({ 
+           .from('profiles')
+           .update({ 
                     is_banned: false,
                     banned_reason: null,
                     banned_at: null,
@@ -842,33 +848,9 @@
             if (!reason) return;
 
             const { error } = await supabaseClient
-           .from('profiles')
-           .update({
-                is_banned: true,
-                banned_reason: reason,
-                banned_at: new Date().toISOString(),
-                banned_by: currentAdmin.id
-            })
-           .in('id', Array.from(selectedUsers));
-
-            if (error) {
-                showToast('Error: ' + error.message, 'error');
-            } else {
-                showToast(`${selectedUsers.size} users banned! 🚫`, 'success');
-                clearSelection();
-                await loadUsers();
-                await loadStats();
-            }
-        }
-
-        async function bulkDelete() {
-            if (selectedUsers.size === 0) return;
-            if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
-
-            const { error } = await supabaseClient
-           .from('profiles')
-           .delete()
-           .in('id', Array.from(selectedUsers));
+          .from('profiles')
+          .delete()
+          .in('id', Array.from(selectedUsers));
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -883,7 +865,7 @@
         function exportUsers() {
             const csv = [
                 'Name,Email,Role,Status,Banned,Created,Last Active,Login Count',
-           ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
+          ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -901,6 +883,7 @@
 
             if (data) {
                 document.getElementById('siteName').value = data.site_name || '';
+                document.getElementById('appVersion').value = data.app_version || 'v1.7.2';
                 document.getElementById('maintenanceMode').checked = data.maintenance_mode;
                 document.getElementById('registrationEnabled').checked = data.registration_enabled;
                 document.getElementById('maxUsers').value = data.max_users || 1000;
@@ -911,9 +894,10 @@
 
         async function saveSettings() {
             const { error } = await supabaseClient
-          .from('system_settings')
-          .update({
+         .from('system_settings')
+         .update({
                     site_name: document.getElementById('siteName').value,
+                    app_version: document.getElementById('appVersion').value,
                     maintenance_mode: document.getElementById('maintenanceMode').checked,
                     registration_enabled: document.getElementById('registrationEnabled').checked,
                     max_users: parseInt(document.getElementById('maxUsers').value),
@@ -922,12 +906,12 @@
                     updated_at: new Date().toISOString(),
                     updated_by: currentAdmin.id
                 })
-          .eq('id', 1);
+         .eq('id', 1);
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
             } else {
-                showToast('✅ Settings saved!', 'success');
+                showToast('✅ Settings saved! Refresh untuk apply version.', 'success');
             }
         }
 
@@ -993,7 +977,7 @@
             const { data } = await supabaseClient.from('profiles').select('*');
             const csv = [
                 'ID,Email,Name,Role,Status,Banned,Created,Last Active,Login Count,Avatar,2FA,Email Notif',
-            ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}","${u.two_factor_enabled}","${u.email_notifications}"`)
+           ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}","${u.two_factor_enabled}","${u.email_notifications}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -1009,7 +993,7 @@
             const { data } = await supabaseClient.from('activity_logs').select('*, profiles(email)').order('created_at', { ascending: false });
             const csv = [
                 'Time,User Email,Action',
-            ...data.map(l => `"${l.created_at}","${l.profiles?.email || 'Unknown'}","${l.action}"`)
+           ...data.map(l => `"${l.created_at}","${l.profiles?.email || 'Unknown'}","${l.action}"`)
             ].join('\n');
 
             const blob = new Blob([csv], { type: 'text/csv' });
@@ -1102,7 +1086,7 @@
     </script>
 
     <style>
-      .tab-btn {
+    .tab-btn {
             padding: 15px 25px;
             background: transparent;
             border: none;
@@ -1113,16 +1097,16 @@
             color: var(--text-light);
             transition: all 0.2s ease;
         }
-      .tab-btn:hover {
+    .tab-btn:hover {
             background: var(--card-bg);
             color: var(--text);
         }
-      .tab-btn.active {
+    .tab-btn.active {
             color: var(--primary);
             border-bottom-color: var(--primary);
             background: var(--card-bg);
         }
-      .tab-content {
+    .tab-content {
             animation: fadeIn 0.3s ease;
         }
         @keyframes fadeIn {
