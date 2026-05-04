@@ -23,7 +23,7 @@
                 <h1>🔧 Admin Panel <span class="badge badge-info" style="font-size:12px;">v1.8.0</span></h1>
                 <p id="adminWelcome">Loading...</p>
             </div>
-            <div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
                     <span id="themeIcon">🌓</span> Tema
                 </button>
@@ -34,8 +34,8 @@
         </div>
 
         <!-- TAB NAVIGATION -->
-        <div class="card" style="padding: 0; margin-bottom: 20px;">
-            <div style="display: flex; overflow-x: auto; border-bottom: 2px solid var(--border);">
+        <div class="card" style="padding: 0; margin-bottom: 20px; overflow-x: auto;">
+            <div style="display: flex; border-bottom: 2px solid var(--border);">
                 <button class="tab-btn active" onclick="switchTab('users', this)">
                     👥 Users <span id="userCount" class="badge badge-info">0</span>
                 </button>
@@ -73,16 +73,16 @@
             </div>
 
             <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
                     <h3>👥 User Management</h3>
-                    <div>
+                    <div style="display: flex; gap: 10px;">
                         <button class="btn-secondary" onclick="exportUsers()">📥 Export CSV</button>
                         <button class="btn-secondary" onclick="refreshUsers()">🔄 Refresh</button>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="searchUser" placeholder="🔍 Search name/email..." oninput="searchUsers()" style="flex: 1;">
+                <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="searchUser" placeholder="🔍 Search name/email..." oninput="searchUsers()">
                     <select id="filterRole" onchange="searchUsers()" style="width: 150px;">
                         <option value="">All Roles</option>
                         <option value="user">User</option>
@@ -96,9 +96,9 @@
                     </select>
                 </div>
 
-                <div id="bulkActions" style="display: none; background: var(--warning); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div id="bulkActions" style="display: none; background: linear-gradient(135deg, var(--warning), var(--error)); padding: 15px; border-radius: 12px; margin-bottom: 15px; color: white;">
                     <strong><span id="selectedCount">0</span> users selected</strong>
-                    <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
                         <button class="btn-secondary" onclick="bulkBan()">🚫 Ban</button>
                         <button class="btn-secondary" onclick="bulkUnban()">✅ Unban</button>
                         <button class="btn-secondary" onclick="bulkChangeRole()">🔄 Change Role</button>
@@ -178,7 +178,7 @@
     <!-- MODAL EDIT USER -->
     <div id="editModal" class="modal" onclick="closeModal(event)">
         <div class="modal-content">
-            <h3>Edit User</h3>
+            <h3>✏️ Edit User</h3>
             <input type="hidden" id="editUserId">
             <div class="form-group">
                 <label>Full Name</label>
@@ -186,30 +186,31 @@
             </div>
             <div class="form-group">
                 <label>Email</label>
-                <input type="email" id="editEmail" disabled>
+                <input type="email" id="editEmail" disabled style="opacity: 0.6;">
             </div>
-            <div class="form-group">
-                <label>Role</label>
-                <select id="editRole">
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                    <option value="dev">Dev</option>
-                </select>
-            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label>Role</label>
+                    <select id="editRole">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                        <option value="dev">Dev</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="editStatus">
+                        <option value="active">Active</option>
+                        <option value="banned">Banned</option>
+                    </select>
+                </div>
             <div class="form-group">
                 <label>Balance (Rp)</label>
                 <input type="number" id="editBalance" step="0.01">
             </div>
-            <div class="form-group">
-                <label>Status</label>
-                <select id="editStatus">
-                    <option value="active">Active</option>
-                    <option value="banned">Banned</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-primary" onclick="saveUser()">💾 Save</button>
-                <button class="btn-secondary" onclick="closeModal()">❌ Cancel</button>
+            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                <button class="btn-primary" onclick="saveUser()" style="flex: 1;">💾 Save Changes</button>
+                <button class="btn-secondary" onclick="closeModal()" style="flex: 1;">❌ Cancel</button>
             </div>
         </div>
     </div>
@@ -217,10 +218,10 @@
     <!-- MODAL ADD PRODUCT -->
     <div id="productModal" class="modal" onclick="closeProductModal(event)">
         <div class="modal-content">
-            <h3 id="productModalTitle">Add Product</h3>
+            <h3 id="productModalTitle">➕ Add Product</h3>
             <input type="hidden" id="productId">
             <div class="form-group">
-                <label>Product Name</label>
+                <label>Product Name *</label>
                 <input type="text" id="productName" placeholder="Netflix Premium 1 Bulan">
             </div>
             <div class="form-group">
@@ -229,8 +230,8 @@
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                 <div class="form-group">
-                    <label>Price (Rp)</label>
-                    <input type="number" id="productPrice" placeholder="50000">
+                    <label>Price (Rp) *</label>
+                    <input type="number" id="productPrice" placeholder="50000" min="0">
                 </div>
                 <div class="form-group">
                     <label>Stock (-1 = unlimited)</label>
@@ -250,9 +251,9 @@
                     <option value="digital">Digital</option>
                 </select>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <button class="btn-primary" onclick="saveProduct()">💾 Save Product</button>
-                <button class="btn-secondary" onclick="closeProductModal()">❌ Cancel</button>
+            <div style="display: flex; gap: 10px; margin-top: 24px;">
+                <button class="btn-primary" onclick="saveProduct()" style="flex: 1;">💾 Save Product</button>
+                <button class="btn-secondary" onclick="closeProductModal()" style="flex: 1;">❌ Cancel</button>
             </div>
         </div>
     </div>
@@ -288,6 +289,7 @@
             await loadDeposits();
             await loadOrders();
             await loadAppeals();
+            await updateBadges();
         })();
 
         function applyTheme() {
@@ -329,9 +331,9 @@
 
         async function loadUsers() {
             const { data, error } = await supabaseClient
-           .from('profiles')
-           .select('*')
-           .order('created_at', { ascending: false });
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
 
             if (error) {
                 showToast('Error: ' + error.message, 'error');
@@ -348,8 +350,6 @@
             const active = allUsers.filter(u => u.status === 'active').length;
             const banned = allUsers.filter(u => u.is_banned).length;
             const totalBalance = allUsers.reduce((sum, u) => sum + (parseFloat(u.balance) || 0), 0);
-            const today = new Date().toISOString().split('T')[0];
-            const newToday = allUsers.filter(u => u.created_at.startsWith(today)).length;
 
             document.getElementById('userCount').textContent = total;
             document.getElementById('userStats').innerHTML = `
@@ -382,25 +382,43 @@
             container.innerHTML = filteredUsers.map(user => `
                 <div class="user-card ${user.is_banned? 'banned' : ''}">
                     <input type="checkbox" class="user-checkbox" data-user-id="${user.id}" onchange="toggleUserSelection('${user.id}')">
-                    <div class="user-info">
-                        <strong>${user.full_name || 'No Name'}</strong>
-                        <small>${user.email}</small>
-                        <div style="margin-top: 8px;">
-                            <span class="badge badge-${user.role}">${user.role.toUpperCase()}</span>
-                            <span class="badge badge-${user.status}">${user.status.toUpperCase()}</span>
-                            ${user.is_banned? '<span class="badge badge-banned">BANNED</span>' : ''}
+                    <div class="user-info" style="flex: 1;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <div>
+                                <strong style="font-size: 16px;">${user.full_name || 'No Name'}</strong>
+                                <small style="display: block; color: var(--text-light);">${user.email}</small>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <span class="badge badge-${user.role}">${user.role.toUpperCase()}</span>
+                                <span class="badge badge-${user.status}">${user.status.toUpperCase()}</span>
+                                ${user.is_banned? '<span class="badge badge-banned">BANNED</span>' : ''}
+                            </div>
                         </div>
-                        <div style="margin-top: 8px; font-size: 13px;">
-                            <strong style="color: var(--success);">💰 Rp ${(parseFloat(user.balance) || 0).toLocaleString('id-ID')}</strong> |
-                            Login: ${user.login_count || 0}x
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                            <div>
+                                <small style="color: var(--text-light);">💰 Balance</small>
+                                <strong style="display: block; color: var(--success);">Rp ${(parseFloat(user.balance) || 0).toLocaleString('id-ID')}</strong>
+                            </div>
+                            <div>
+                                <small style="color: var(--text-light);">🔑 Login Count</small>
+                                <strong style="display: block;">${user.login_count || 0}x</strong>
+                            </div>
+                            <div>
+                                <small style="color: var(--text-light);">📅 Joined</small>
+                                <strong style="display: block;">${new Date(user.created_at).toLocaleDateString('id-ID')}</strong>
+                            </div>
+                            ${user.ban_reason? `
+                            <div>
+                                <small style="color: var(--error);">🚫 Ban Reason</small>
+                                <strong style="display: block; color: var(--error);">${user.ban_reason}</strong>
+                            </div>
+                            ` : ''}
                         </div>
-                        <div style="margin-top: 5px; font-size: 12px; color: #999;">
-                            Joined: ${new Date(user.created_at).toLocaleDateString('id-ID')}
-                        </div>
-                    <div class="user-actions">
+                    </div>
+                    <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
                         <button class="btn-edit" onclick="editUser('${user.id}')">✏️ Edit</button>
                         ${user.is_banned
-                           ? `<button class="btn-unban" onclick="unbanUser('${user.id}')">✅ Unban</button>`
+                          ? `<button class="btn-unban" onclick="unbanUser('${user.id}')">✅ Unban</button>`
                             : `<button class="btn-ban" onclick="banUser('${user.id}')">🚫 Ban</button>`
                         }
                         <button class="btn-delete" onclick="deleteUser('${user.id}')">🗑️ Delete</button>
@@ -453,7 +471,7 @@
         }
 
         async function bulkBan() {
-            const reason = prompt('Ban reason:');
+            const reason = prompt('Ban reason untuk semua:');
             if (!reason) return;
             await supabaseClient.from('profiles').update({ is_banned: true, status: 'banned', ban_reason: reason }).in('id', Array.from(selectedUsers));
             showToast(`${selectedUsers.size} users banned!`, 'success');
@@ -484,8 +502,8 @@
             const users = allUsers.filter(u => selectedUsers.has(u.id));
             for (const user of users) {
                 await supabaseClient.from('profiles')
-               .update({ balance: (parseFloat(user.balance) || 0) + amount })
-               .eq('id', user.id);
+              .update({ balance: (parseFloat(user.balance) || 0) + amount })
+              .eq('id', user.id);
 
                 await supabaseClient.from('transactions').insert({
                     user_id: user.id,
@@ -493,7 +511,7 @@
                     amount: amount,
                     balance_before: user.balance,
                     balance_after: (parseFloat(user.balance) || 0) + amount,
-                    description: `Admin add balance`
+                    description: `Admin bulk add balance`
                 });
             }
 
@@ -536,7 +554,6 @@
 
             if (error) showToast('Error: ' + error.message, 'error');
             else {
-                // Log balance change
                 if (oldUser.balance!== newBalance) {
                     await supabaseClient.from('transactions').insert({
                         user_id: userId,
@@ -589,7 +606,7 @@
         function exportUsers() {
             const csv = [
                 'Name,Email,Role,Status,Banned,Balance,Created',
-               ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.balance || 0}","${u.created_at}"`)
+              ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.balance || 0}","${u.created_at}"`)
             ].join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
@@ -600,13 +617,12 @@
             showToast('Users exported!', 'success');
         }
 
-        // DEPOSITS
         async function loadDeposits() {
             const { data } = await supabaseClient
-           .from('deposits')
-           .select('*, profiles!deposits_user_id_fkey(full_name, email)')
-           .eq('status', 'pending')
-           .order('created_at', { ascending: false });
+          .from('deposits')
+          .select('*, profiles!deposits_user_id_fkey(full_name, email)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
 
             if (data && data.length > 0) {
                 document.getElementById('depositBadge').textContent = data.length;
@@ -614,14 +630,14 @@
 
                 document.getElementById('depositsList').innerHTML = data.map(d => `
                     <div class="user-card" style="border-color: var(--warning);">
-                        <div class="user-info">
+                        <div class="user-info" style="flex: 1;">
                             <strong>${d.profiles?.full_name}</strong>
                             <small>${d.profiles?.email}</small>
                             <h3 style="color: var(--success); margin: 10px 0;">Rp ${parseFloat(d.amount).toLocaleString('id-ID')}</h3>
                             <small>${new Date(d.created_at).toLocaleString('id-ID')}</small>
                             ${d.proof_url? `<br><a href="${d.proof_url}" target="_blank" style="color:var(--primary);">📷 Lihat Bukti Transfer</a>` : '<br><span style="color:var(--error);">No proof uploaded</span>'}
                         </div>
-                        <div class="user-actions">
+                        <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
                             <button class="btn-approve" onclick="approveDeposit('${d.id}')">✅ Approve</button>
                             <button class="btn-reject" onclick="rejectDeposit('${d.id}')">❌ Reject</button>
                         </div>
@@ -661,13 +677,12 @@
             await loadDeposits();
         }
 
-        // ORDERS
         async function loadOrders() {
             const { data } = await supabaseClient
-           .from('orders')
-           .select('*, profiles!orders_user_id_fkey(full_name, email), products(name, price)')
-           .eq('status', 'pending')
-           .order('created_at', { ascending: false });
+          .from('orders')
+          .select('*, profiles!orders_user_id_fkey(full_name, email), products(name, price)')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
 
             if (data && data.length > 0) {
                 document.getElementById('orderBadge').textContent = data.length;
@@ -675,14 +690,14 @@
 
                 document.getElementById('ordersList').innerHTML = data.map(o => `
                     <div class="user-card" style="border-color: var(--info);">
-                        <div class="user-info">
+                        <div class="user-info" style="flex: 1;">
                             <strong>${o.profiles?.full_name}</strong>
                             <small>${o.profiles?.email}</small>
                             <p style="margin: 10px 0;"><strong>Product:</strong> ${o.products?.name}</p>
                             <h3 style="color: var(--primary);">Rp ${parseFloat(o.total_price).toLocaleString('id-ID')}</h3>
                             <small>${new Date(o.created_at).toLocaleString('id-ID')}</small>
                         </div>
-                        <div class="user-actions">
+                        <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
                             <button class="btn-approve" onclick="approveOrder('${o.id}')">✅ Approve</button>
                             <button class="btn-reject" onclick="rejectOrder('${o.id}')">❌ Cancel</button>
                         </div>
@@ -709,7 +724,6 @@
             const reason = prompt('Reason cancel:');
             if (!reason) return;
 
-            // Refund balance
             const { data: order } = await supabaseClient.from('orders').select('*, profiles(balance)').eq('id', id).single();
             if (order) {
                 await supabaseClient.from('profiles').update({
@@ -735,7 +749,6 @@
             await loadOrders();
         }
 
-        // PRODUCTS
         async function loadProducts() {
             const { data } = await supabaseClient.from('products').select('*').order('created_at', { ascending: false });
 
@@ -750,6 +763,7 @@
                     </div>
                     <p style="font-size:12px; margin:5px 0;">Stock: ${p.stock === -1? 'Unlimited' : p.stock} | ${p.category}</p>
                     <div style="display:flex; gap:8px; margin-top:10px;">
+                    <div style="display:flex; gap:8px; margin-top:10px;">
                         <button class="btn-edit" style="flex:1;" onclick="editProduct('${p.id}')">✏️ Edit</button>
                         <button class="btn-delete" style="flex:1;" onclick="deleteProduct('${p.id}')">🗑️ Delete</button>
                     </div>
@@ -758,7 +772,7 @@
         }
 
         function showAddProduct() {
-            document.getElementById('productModalTitle').textContent = 'Add Product';
+            document.getElementById('productModalTitle').textContent = '➕ Add Product';
             document.getElementById('productId').value = '';
             document.getElementById('productName').value = '';
             document.getElementById('productDesc').value = '';
@@ -772,7 +786,7 @@
         async function editProduct(id) {
             const { data } = await supabaseClient.from('products').select('*').eq('id', id).single();
             if (!data) return;
-            document.getElementById('productModalTitle').textContent = 'Edit Product';
+            document.getElementById('productModalTitle').textContent = '✏️ Edit Product';
             document.getElementById('productId').value = data.id;
             document.getElementById('productName').value = data.name;
             document.getElementById('productDesc').value = data.description || '';
@@ -787,7 +801,7 @@
             const id = document.getElementById('productId').value;
             const data = {
                 name: document.getElementById('productName').value,
-            description: document.getElementById('productDesc').value,
+                description: document.getElementById('productDesc').value,
                 price: parseFloat(document.getElementById('productPrice').value),
                 stock: parseInt(document.getElementById('productStock').value),
                 image_url: document.getElementById('productImage').value,
@@ -828,16 +842,16 @@
         // ANALYTICS
         async function loadAnalytics() {
             const { data: deposits } = await supabaseClient
-          .from('deposits')
-          .select('amount, created_at')
-          .eq('status', 'approved')
-          .gte('created_at', new Date(Date.now() - 2592000000).toISOString());
+         .from('deposits')
+         .select('amount, created_at')
+         .eq('status', 'approved')
+         .gte('created_at', new Date(Date.now() - 2592000000).toISOString());
 
             const { data: orders } = await supabaseClient
-          .from('orders')
-          .select('total_price, created_at')
-          .eq('status', 'completed')
-          .gte('created_at', new Date(Date.now() - 2592000000).toISOString());
+         .from('orders')
+         .select('total_price, created_at')
+         .eq('status', 'completed')
+         .gte('created_at', new Date(Date.now() - 2592000000).toISOString());
 
             const days = [];
             const revenue = [];
@@ -850,11 +864,11 @@
                 days.push(date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }));
 
                 const dayDeposits = deposits.filter(d => d.created_at.startsWith(dayKey))
-                  .reduce((sum, d) => sum + parseFloat(d.amount), 0);
+                 .reduce((sum, d) => sum + parseFloat(d.amount), 0);
                 revenue.push(dayDeposits);
 
                 const dayOrders = orders.filter(o => o.created_at.startsWith(dayKey))
-                  .reduce((sum, o) => sum + parseFloat(o.total_price), 0);
+                 .reduce((sum, o) => sum + parseFloat(o.total_price), 0);
                 sales.push(dayOrders);
             }
 
@@ -915,10 +929,10 @@
         // APPEALS
         async function loadAppeals() {
             const { data } = await supabaseClient
-          .from('ban_appeals')
-          .select('*, profiles!ban_appeals_user_id_fkey(full_name, email)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
+         .from('ban_appeals')
+         .select('*, profiles!ban_appeals_user_id_fkey(full_name, email)')
+         .eq('status', 'pending')
+         .order('created_at', { ascending: false });
 
             if (data && data.length > 0) {
                 document.getElementById('appealBadge').textContent = data.length;
@@ -926,7 +940,7 @@
 
                 document.getElementById('appealsList').innerHTML = data.map(a => `
                     <div class="user-card" style="border-color: var(--info);">
-                        <div class="user-info">
+                        <div class="user-info" style="flex: 1;">
                             <strong>${a.profiles?.full_name}</strong>
                             <small>${a.profiles?.email}</small>
                             <p style="margin: 10px 0; padding: 10px; background: var(--bg); border-radius: 6px;">
@@ -935,7 +949,7 @@
                             ${a.ban_reason? `<small style="color: var(--error);">Banned for: ${a.ban_reason}</small><br>` : ''}
                             <small>${new Date(a.created_at).toLocaleString('id-ID')}</small>
                         </div>
-                        <div class="user-actions">
+                        <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
                             <button class="btn-approve" onclick="approveAppeal('${a.id}', '${a.user_id}')">✅ Approve</button>
                             <button class="btn-reject" onclick="rejectAppeal('${a.id}')">❌ Reject</button>
                         </div>
@@ -981,10 +995,10 @@
         // LOGS
         async function loadActivityLogs() {
             const { data } = await supabaseClient
-          .from('activity_logs')
-          .select('*, profiles!activity_logs_user_id_fkey(full_name, email)')
-          .order('created_at', { ascending: false })
-          .limit(100);
+         .from('activity_logs')
+         .select('*, profiles!activity_logs_user_id_fkey(full_name, email)')
+         .order('created_at', { ascending: false })
+         .limit(100);
 
             document.getElementById('activityLogs').innerHTML = data.map(log => `
                 <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border);">
@@ -1018,8 +1032,7 @@
             setTimeout(() => toast.remove(), 3000);
         }
 
-        // Load badges on init
-        setInterval(async () => {
+        async function updateBadges() {
             const { count: dCount } = await supabaseClient.from('deposits').select('*', { count: 'exact', head: true }).eq('status', 'pending');
             const { count: oCount } = await supabaseClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
             const { count: aCount } = await supabaseClient.from('ban_appeals').select('*', { count: 'exact', head: true }).eq('status', 'pending');
@@ -1036,7 +1049,10 @@
                 document.getElementById('appealBadge').textContent = aCount;
                 document.getElementById('appealBadge').style.display = 'inline-block';
             }
-        }, 30000);
+        }
+
+        // Auto refresh badges setiap 30s
+        setInterval(updateBadges, 30000);
     </script>
 </body>
 </html>
