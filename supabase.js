@@ -8,12 +8,28 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 */
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function initTheme() {
-    const theme = localStorage.getItem('theme');
-    if (theme === 'dark') {
-        document.documentElement.classList.add('dark-mode');
-        document.body.classList.add('dark-mode');
-    }
+// VERSION CONFIG - UPDATE SINI JE
+const APP_VERSION = 'v1.7.2';
+const APP_NAME = 'Pahri Platform';
+
+// Auto-inject version badge kat semua page
+document.addEventListener('DOMContentLoaded', () => {
+    updateVersionBadge();
+});
+
+function updateVersionBadge() {
+    const badges = document.querySelectorAll('.version-badge');
+    badges.forEach(badge => {
+        badge.innerHTML = `<span class="dot"></span>${APP_VERSION}`;
+    });
+    
+    // Update title kalau ada
+    const titles = document.querySelectorAll('title');
+    titles.forEach(t => {
+        if (!t.textContent.includes(APP_VERSION)) {
+            t.textContent = t.textContent.replace(/v\d+\.\d+\.\d+/, APP_VERSION);
+        }
+    });
 }
 
 async function checkAuth(requiredRole = null) {
@@ -24,10 +40,10 @@ async function checkAuth(requiredRole = null) {
     }
 
     const { data: profile } = await supabaseClient
-      .from('profiles')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
+     .from('profiles')
+     .select('*')
+     .eq('id', session.user.id)
+     .single();
 
     if (!profile) {
         return { ok: false, redirect: '/login', msg: 'Profile tak jumpa' };
@@ -44,7 +60,7 @@ async function checkAuth(requiredRole = null) {
         return { ok: false, redirect: '/maintenance', msg: 'Website maintenance' };
     }
 
-    // CHECK BANNED - REDIRECT KE /banned
+    // CHECK BANNED
     if (profile.is_banned) {
         return { ok: false, redirect: '/banned', msg: `Account BANNED: ${profile.banned_reason || 'No reason'}` };
     }
@@ -63,8 +79,4 @@ async function checkAuth(requiredRole = null) {
     }
 
     return { ok: true, profile: profile, session: session };
-}
-
-if (typeof window !== 'undefined') {
-    initTheme();
 }
