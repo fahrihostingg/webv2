@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallet - Pahri v1.8.0</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="dashboard-header">
+            <div>
+                <h1>💰 My Wallet</h1>
+                <p>Balance: <strong id="userBalance">Rp 0</strong></p>
+            </div>
+            <div>
+                <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="logout()">🚪 Logout</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>💳 Deposit Saldo</h3>
+            <div class="form-group">
+                <label>Jumlah Deposit</label>
+                <input type="number" id="depositAmount" placeholder="50000" min="10000">
+            </div>
+            <div style="text-align:center; margin: 20px 0;">
+                <p><strong>Scan QRIS ni untuk bayar:</strong></p>
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=00020101021226660014ID.CO.QRIS.WWW011893600914ID1021000000" 
+                     style="max-width:300px; border: 4px solid var(--primary); border-radius: 12px;">
+                <p style="color: var(--text-light); font-size: 13px;">Atau transfer ke: BCA 1234567890 a/n PAHRI</p>
+            </div>
+            <div class="form-group">
+                <label>Upload Bukti Transfer</label>
+                <input type="file" id="proofFile" accept="image/*">
+            </div>
+            <button class="btn-primary" onclick="submitDeposit()">📤 Submit Deposit</button>
+        </div>
+
+        <div class="card">
+            <h3>🛍️ Shop - Beli Produk</h3>
+            <div id="productsGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;"></div>
+        </div>
+
+        <div class="card">
+            <h3>📜 Transaction History</h3>
+            <div id="transactionHistory"></div>
+        </div>
+    </div>
+    <div id="toastContainer"></div>
+
+    <script>
+        let currentUser = null;
+
+        (async () => {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (!user) return window.location.replace('/login');
+            
+            const { data: profile } = await supabaseClient.from('profiles').select('*').eq('id', user.id).single();
+            currentUser = profile;
+            document.getElementById('userBalance').textContent = `Rp ${profile.balance.toLocaleString('id-ID')}`;
+            
+            await loadProducts();
+            await loadTransactions();
+        })();
+
+        async function submitDeposit() {
+            const amount = parseFloat(document.getElementById('depositAmount').value);
+            const file = document.getElementById('proofFile').files[0];
+            
+            if (!amount || amount < 10000) return showToast('Min deposit Rp 10.000', 'error');
+            if (!file) return showToast('Upload bukti transfer!', 'error');
+
+            showToast('Uploading...', 'info');
+            
+            // Upload gambar ke storage
+            const fileName = `${currentUser.id}/${Date.now()}.jpg`;
+            const { data: uploadData, error: uploadError } = await supabaseClient.storage
+           .from('deposits')
+           .upload(fileName, file);
+           
+            if (uploadError) return showToast('Upload error: ' + uploadError.message, 'error');
+            
+            const { data: { publicUrl } } = supabaseClient.storage.from('deposits').getPublicUrl(fileName);
+            
+            // Insert deposit request
+            const { error } = await supabaseClient.from('deposits').insert({
+                user_id: currentUser.id,
+                amount: amount,
+                proof_url: publicUrl,
+                status: 'pending'
+            });
+            
+            if (error) showToast('Error: ' + error.message, 'error');
+            else {
+                showToast('✅ Deposit submitted! Tunggu admin approve.', 'success');
+                document.getElementById('depositAmount').value = '';
+                document.getElementById('proofFile').value = '';
+            }
+        }
+
+        async function loadProducts() {
+            const { data } = await supabaseClient.from('products').select('*').eq('is_active', true).order('created_at', { ascending: false });
+            
+            document.getElementById('productsGrid').innerHTML = data.map(p => `
+                <div class="card" style="padding: 15px;">
+                    <img src="${p.image_url || 'https://via.placeholder.com/200'}" style="width:100%; height:150px; object-fit:cover; border-radius:8px;">
+                    <h4>${p.name}</h4>
+                    <p style="font-size:13px; color:var(--text-light);">${p.description}</p>
+                    <h3 style="color: var(--primary);">Rp ${p.price.toLocaleString('id-ID')}</h3>
+                    <p style="font-size:12px;">Stock: ${p.stock === -1 ? 'Unlimited' : p.stock}</p>
+                    <button class="btn-primary" style="width:100%;" onclick="buyProduct('${p.id}', ${p.price}, '${p.name}')">🛒 Beli</button>
+                </div>
+            `).join('');
+        }
+
+        async function buyProduct(productId, price, name) {
+            if (currentUser.balance < price) return showToast('Saldo tak cukup! Top up dulu.', 'error');
+            if (!confirm(`Beli ${name} - Rp ${price.toLocaleString('id-ID')}?`)) return;
+            
+            // Deduct saldo
+            const { error: updateError } = await supabaseClient
+           .from('profiles')
+           .update({ 
+                balance: currentUser.balance - price,
+                total_spent: currentUser.total_spent + price
+            })
+           .eq('id', currentUser.id);
+           
+            if (updateError) return showToast('Error: ' + updateError.message, 'error');
+            
+            // Create order
+            await supabaseClient.from('orders').insert({
+                user_id: currentUser.id,
+                product_id: productId,
+                total_price: price,
+                status: 'pending'
+            });
+            
+            // Log transaction
+            await supabaseClient.from('transactions').insert({
+                user_id: currentUser.id,
+                type: 'purchase',
+                amount: price,
+                balance_before: currentUser.balance,
+                balance_after: currentUser.balance - price,
+                description: `Beli ${name}`
+            });
+            
+            showToast('✅ Order berjaya! Tunggu admin approve.', 'success');
+            setTimeout(() => window.location.reload(), 1500);
+        }
+
+        async function loadTransactions() {
+            const { data } = await supabaseClient
+           .from('transactions')
+           .select('*')
+           .eq('user_id', currentUser.id)
+           .order('created_at', { ascending: false })
+           .limit(20);
+           
+            document.getElementById('transactionHistory').innerHTML = data.map(t => `
+                <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border);">
+                    <div>
+                        <strong>${t.description}</strong><br>
+                        <small style="color:#999;">${new Date(t.created_at).toLocaleString('id-ID')}</small>
+                    </div>
+                    <div style="text-align:right;">
+                        <strong style="color:${t.type === 'deposit' ? 'var(--success)' : 'var(--error)'};">
+                            ${t.type === 'deposit' ? '+' : '-'}Rp ${t.amount.toLocaleString('id-ID')}
+                        </strong><br>
+                        <small>Balance: Rp ${t.balance_after.toLocaleString('id-ID')}</small>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function logout() {
+            await supabaseClient.auth.signOut();
+            window.location.replace('/login');
+        }
+    </script>
+</body>
+</html>
