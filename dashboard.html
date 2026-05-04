@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Pahri v1.7.0</title>
+    <title>Dashboard - Pahri v1.7.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase.js"></script>
@@ -20,7 +21,7 @@
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>📊 Dashboard</h1>
+                <h1>📊 Dashboard <span class="badge badge-info" style="font-size:12px;">v1.7.2</span></h1>
                 <p id="userWelcome">Loading...</p>
             </div>
             <div>
@@ -40,7 +41,7 @@
 
         <div class="card">
             <h3>🎉 Selamat Datang!</h3>
-            <p>Akaun kau dah approved. Nikmati Pahri Platform v1.7.0</p>
+            <p>Akaun kau dah approved. Nikmati Pahri Platform v1.7.2</p>
             <div class="stats">
                 <div class="stat-box">
                     <h3 id="loginCount">0</h3>
@@ -85,7 +86,7 @@
     </div>
 
     <div class="version-badge">
-        <span class="dot"></span>v1.7.0
+        <span class="dot"></span>v1.7.2
     </div>
 
     <div id="toastContainer"></div>
@@ -145,11 +146,11 @@
 
         async function loadNotifications() {
             const { data } = await supabaseClient
-          .from('notifications')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
+         .from('notifications')
+         .select('*')
+         .eq('user_id', currentUser.id)
+         .order('created_at', { ascending: false })
+         .limit(10);
 
             const notifList = document.getElementById('notifList');
             const unread = data? data.filter(n =>!n.is_read).length : 0;
@@ -221,3 +222,4 @@
         }
     </script>
 </body>
+</html>
