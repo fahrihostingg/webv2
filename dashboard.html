@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Pro - Pahri v1.9.0</title>
+    <title>Dashboard - Pahri v1.9.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -18,44 +17,47 @@
 </head>
 <body>
     <div class="dashboard">
-        <!-- HEADER -->
+        <!-- HEADER - UPDATE: Tambah notif bell + role badge -->
         <div class="dashboard-header">
             <div>
-                <h1>📊 Dashboard Pro <span class="badge badge-info" style="font-size:11px;">v1.9.0</span></h1>
-                <p id="userWelcome" style="margin-top: 4px;">Loading...</p>
+                <h1>📊 Dashboard <span class="badge badge-info" style="font-size:11px;">v1.9.0</span></h1>
+                <p id="userWelcome">Loading...</p>
             </div>
-            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                <!-- NOTIFICATION BELL -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <!-- TAMBAH: Notification Bell -->
                 <button onclick="toggleNotifications()" style="position: relative;">
                     🔔
                     <span id="notifBadge" class="badge badge-error" style="position: absolute; top: -8px; right: -8px; display: none;">0</span>
                 </button>
                 
                 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
-                    <span id="themeIcon">🌓</span>
+                    <span id="themeIcon">🌓</span> Tema
                 </button>
-                <button id="storeBtn" onclick="window.location.href='/store.html'">🛍️ Store</button>
-                <button id="walletBtn" onclick="window.location.href='/wallet.html'">💰 Wallet</button>
+                <button onclick="window.location.href='/store.html'">🛍️ Store</button>
+                <button onclick="window.location.href='/wallet.html'">💰 Wallet</button>
                 <button id="adminBtn" onclick="window.location.href='/admin.html'" style="display:none;">🔧 Admin</button>
                 <button id="devBtn" onclick="window.location.href='/dev-settings.html'" style="display:none;">👑 Dev</button>
                 <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <!-- GOD MODE BANNER - DEV ONLY -->
+        <!-- TAMBAH: God Mode Banner untuk Dev -->
         <div id="godModeBanner" style="display:none;" class="god-mode-banner">
             👑 GOD MODE ACTIVATED - UNLIMITED POWER 👑
         </div>
 
-        <!-- STATS CARDS -->
-        <div class="stats" id="statsContainer">
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
-            <div class="skeleton skeleton-card"></div>
+        <!-- STATS - UPDATE: Real-time + lebih detail -->
+        <div class="card">
+            <h3>💰 Saldo & Statistik</h3>
+            <div class="stats" id="userStats">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+            </div>
         </div>
 
-        <!-- QUICK ACTIONS -->
+        <!-- TAMBAH: Quick Actions -->
         <div class="card">
             <h3>⚡ Quick Actions</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
@@ -90,7 +92,7 @@
             </div>
         </div>
 
-        <!-- CHARTS ROW -->
+        <!-- TAMBAH: Charts Row -->
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
             <div class="card">
                 <h3>📈 Spending Last 7 Days</h3>
@@ -102,14 +104,14 @@
             </div>
         </div>
 
-        <!-- ORDERS & ACTIVITY -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <!-- ORDERS & ACTIVITY - UPDATE: 2 columns -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
             <div class="card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3>📦 Recent Orders</h3>
-                    <button class="btn-secondary" onclick="window.location.href='/orders.html'" style="padding: 8px 16px; font-size: 13px;">View All</button>
+                    <button class="btn-secondary" onclick="loadOrders()" style="padding: 8px 16px; font-size: 13px;">🔄 Refresh</button>
                 </div>
-                <div id="recentOrders" style="max-height: 400px; overflow-y: auto;"></div>
+                <div id="myOrders" style="max-height: 400px; overflow-y: auto;"></div>
             </div>
 
             <div class="card">
@@ -121,10 +123,10 @@
             </div>
         </div>
 
-        <!-- TRANSACTIONS -->
+        <!-- TRANSACTIONS - KEKAL SAMA -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>💳 Transaction History</h3>
+                <h3>📊 Transaction History</h3>
                 <select id="filterTx" onchange="loadTransactions()" style="width: 200px;">
                     <option value="">All Types</option>
                     <option value="deposit">Deposit</option>
@@ -133,11 +135,11 @@
                     <option value="admin_add">Admin Add</option>
                 </select>
             </div>
-            <div id="transactionList" style="max-height: 500px; overflow-y: auto;"></div>
+            <div id="myTransactions" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
     </div>
 
-    <!-- NOTIFICATION PANEL -->
+    <!-- TAMBAH: Notification Panel -->
     <div id="notifPanel" style="display:none; position:fixed; top:80px; right:24px; width:380px; max-height:500px; background:var(--bg-card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); z-index:9999; overflow:hidden;">
         <div style="padding:20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
             <h3 style="margin:0;">🔔 Notifications</h3>
@@ -146,7 +148,7 @@
         <div id="notifList" style="max-height:400px; overflow-y:auto;"></div>
     </div>
 
-    <!-- WITHDRAW MODAL -->
+    <!-- TAMBAH: Withdraw Modal -->
     <div id="withdrawModal" class="modal" onclick="closeWithdrawModal(event)">
         <div class="modal-content">
             <h3>💸 Withdraw Saldo</h3>
@@ -209,9 +211,12 @@
             initTheme();
             await loadAllData();
             
-            // Real-time subscriptions
-            subscribeToTable('transactions', () => loadAllData());
-            subscribeToTable('orders', () => loadRecentOrders());
+            // REAL-TIME SUBSCRIPTIONS - Auto update tanpa refresh
+            subscribeToTable('transactions', () => {
+                loadAllData();
+                showToast('🔄 Data updated!', 'info', 2000);
+            });
+            subscribeToTable('orders', () => loadOrders());
             subscribeToTable('profiles', (payload) => {
                 if (payload.new.id === currentUser.id) {
                     currentUser = payload.new;
@@ -223,7 +228,7 @@
         async function loadAllData() {
             await Promise.all([
                 updateStats(),
-                loadRecentOrders(),
+                loadOrders(),
                 loadActivityFeed(),
                 loadTransactions(),
                 loadCharts(),
@@ -241,7 +246,7 @@
             const totalSpent = tx?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + Math.abs(t.amount), 0) || 0;
             const totalOrders = tx?.filter(t => t.type === 'purchase').length || 0;
 
-            document.getElementById('statsContainer').innerHTML = `
+            document.getElementById('userStats').innerHTML = `
                 <div class="stat-box" style="background: linear-gradient(135deg, #10b981, #059669);">
                     <h3>${formatCurrency(currentUser.balance)}</h3>
                     <p>💰 Current Balance</p>
@@ -337,7 +342,7 @@
             });
         }
 
-        async function loadRecentOrders() {
+        async function loadOrders() {
             const { data } = await supabaseClient
            .from('orders')
            .select('*, products(name, price, image_url)')
@@ -345,7 +350,7 @@
            .order('created_at', { ascending: false })
            .limit(5);
 
-            document.getElementById('recentOrders').innerHTML = !data || data.length === 0
+            document.getElementById('myOrders').innerHTML =!data || data.length === 0
                 ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No orders yet</p>'
                 : data.map(o => `
                     <div style="display:flex; gap:12px; padding:16px; border-bottom:1px solid var(--border); align-items:center;">
@@ -371,7 +376,7 @@
            .order('created_at', { ascending: false })
            .limit(10);
 
-            document.getElementById('activityFeed').innerHTML = !data || data.length === 0
+            document.getElementById('activityFeed').innerHTML =!data || data.length === 0
                 ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No activity yet</p>'
                 : data.map(a => `
                     <div style="display:flex; gap:12px; padding:12px; border-bottom:1px solid var(--border);">
@@ -386,12 +391,8 @@
 
         function getActivityIcon(action) {
             const icons = {
-                login: '🔑',
-                logout: '🚪',
-                purchase: '🛒',
-                deposit: '💰',
-                withdraw: '💸',
-                update_profile: '✏️'
+                login: '🔑', logout: '🚪', purchase: '🛒', deposit: '💰',
+                withdraw: '💸', update_profile: '✏️'
             };
             return icons[action] || '📋';
         }
@@ -409,7 +410,7 @@
 
             const { data } = await query;
 
-            document.getElementById('transactionList').innerHTML = !data || data.length === 0
+            document.getElementById('myTransactions').innerHTML =!data || data.length === 0
                 ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No transactions</p>'
                 : data.map(t => `
                     <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--border);">
@@ -427,7 +428,6 @@
         }
 
         async function loadNotifications() {
-            // Simulate notifications from orders/transactions
             const { data: orders } = await supabaseClient
            .from('orders')
            .select('*, products(name)')
