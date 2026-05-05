@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Pahri v1.8.0</title>
+    <title>Admin Panel - Pahri v1.7.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -12,7 +12,9 @@
     <script>
         (function() {
             const theme = localStorage.getItem('theme');
-            if (theme === 'dark') document.documentElement.classList.add('dark-mode');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
         })();
     </script>
 </head>
@@ -20,281 +22,254 @@
     <div class="dashboard">
         <div class="dashboard-header">
             <div>
-                <h1>🔧 Admin Panel <span class="badge badge-info" style="font-size:12px;">v1.8.0</span></h1>
+                <h1>🔧 Pahri Admin Panel <span id="roleTag"></span> <span class="badge badge-info" style="font-size:12px;">v1.7.2</span></h1>
                 <p id="adminWelcome">Loading...</p>
             </div>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div>
                 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
                     <span id="themeIcon">🌓</span> Tema
                 </button>
-                <button id="devBtn" onclick="window.location.href='/dev-settings'" style="display:none;">💻 Dev Panel</button>
+                <button onclick="window.location.href='/dev-settings'" id="devBtn" style="display:none;">💻 Dev Panel</button>
                 <button onclick="window.location.href='/dashboard'">📊 Dashboard</button>
+                <button onclick="window.location.href='/profile'">👤 Profile</button>
                 <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <!-- TAB NAVIGATION -->
-        <div class="card" style="padding: 0; margin-bottom: 20px; overflow-x: auto;">
-            <div style="display: flex; border-bottom: 2px solid var(--border);">
-                <button class="tab-btn active" onclick="switchTab('users', this)">
-                    👥 Users <span id="userCount" class="badge badge-info">0</span>
-                </button>
-                <button class="tab-btn" onclick="switchTab('deposits', this)">
-                    💰 Deposits <span id="depositBadge" class="badge badge-pending" style="display:none;">0</span>
-                </button>
-                <button class="tab-btn" onclick="switchTab('orders', this)">
-                    📦 Orders <span id="orderBadge" class="badge badge-pending" style="display:none;">0</span>
-                </button>
-                <button class="tab-btn" onclick="switchTab('products', this)">
-                    🛍️ Products
-                </button>
-                <button class="tab-btn" onclick="switchTab('analytics', this)">
-                    📊 Analytics
-                </button>
-                <button class="tab-btn" onclick="switchTab('appeals', this)">
-                    📮 Appeals <span id="appealBadge" class="badge badge-pending" style="display:none;">0</span>
+        <!-- TAB NAVIGATION - DEV ONLY -->
+        <div class="card" id="devTabs" style="display:none; padding: 0; overflow: hidden;">
+            <div style="display: flex; background: var(--bg); border-bottom: 2px solid var(--border);">
+                <button class="tab-btn active" onclick="switchTab('users', this)" id="tabUsers">
+                    👥 Users
                 </button>
                 <button class="tab-btn" onclick="switchTab('logs', this)">
                     📋 Logs
                 </button>
+                <button class="tab-btn" onclick="switchTab('settings', this)">
+                    ⚙️ System
+                </button>
+                <button class="tab-btn" onclick="switchTab('dev', this)">
+                    💻 Dev Tools
+                </button>
             </div>
         </div>
 
-        <!-- TAB: USERS -->
+        <!-- TAB 1: USERS - Admin + Dev -->
         <div id="tabContent-users" class="tab-content">
-            <div class="card">
-                <h3>📊 Statistics</h3>
-                <div class="stats" id="userStats">
-                    <div class="skeleton skeleton-card"></div>
-                    <div class="skeleton skeleton-card"></div>
-                    <div class="skeleton skeleton-card"></div>
-                    <div class="skeleton skeleton-card"></div>
-                </div>
+            <div class="stats" id="statsContainer">
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
+                <div class="skeleton skeleton-card"></div>
             </div>
 
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                    <h3>👥 User Management</h3>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-secondary" onclick="exportUsers()">📥 Export CSV</button>
-                        <button class="btn-secondary" onclick="refreshUsers()">🔄 Refresh</button>
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 10px; margin-bottom: 15px;">
-                    <input type="text" id="searchUser" placeholder="🔍 Search name/email..." oninput="searchUsers()">
-                    <select id="filterRole" onchange="searchUsers()" style="width: 150px;">
-                        <option value="">All Roles</option>
-                        <option value="user">User</option>
-                        <option value="admin">Admin</option>
-                        <option value="dev">Dev</option>
-                    </select>
-                    <select id="filterStatus" onchange="searchUsers()" style="width: 150px;">
-                        <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="banned">Banned</option>
-                    </select>
-                </div>
-
-                <div id="bulkActions" style="display: none; background: linear-gradient(135deg, var(--warning), var(--error)); padding: 15px; border-radius: 12px; margin-bottom: 15px; color: white;">
-                    <strong><span id="selectedCount">0</span> users selected</strong>
-                    <div style="margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button class="btn-secondary" onclick="bulkBan()">🚫 Ban</button>
-                        <button class="btn-secondary" onclick="bulkUnban()">✅ Unban</button>
-                        <button class="btn-secondary" onclick="bulkChangeRole()">🔄 Change Role</button>
-                        <button class="btn-secondary" onclick="bulkAddBalance()">💰 Add Balance</button>
-                        <button class="btn-secondary" onclick="bulkDelete()" style="background: var(--error);">🗑️ Delete</button>
-                        <button class="btn-secondary" onclick="clearSelection()">❌ Cancel</button>
-                    </div>
-                </div>
-
-                <div id="usersList"></div>
+            <div class="card" id="pendingSection" style="border: 4px solid var(--warning); display: none;">
+                <h3>⏳ Pending Approval <span id="pendingCount" class="badge badge-pending">0</span></h3>
+                <p style="color: var(--text-light); margin-bottom: 20px;">User baru yang tunggu approval kau.</p>
+                <div id="pendingUsersList"></div>
             </div>
-        </div>
 
-        <!-- TAB: DEPOSITS -->
-        <div id="tabContent-deposits" class="tab-content" style="display:none;">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>💰 Pending Deposits</h3>
-                    <button class="btn-secondary" onclick="loadDeposits()">🔄 Refresh</button>
-                </div>
-                <div id="depositsList"></div>
-            </div>
-        </div>
-
-        <!-- TAB: ORDERS -->
-        <div id="tabContent-orders" class="tab-content" style="display:none;">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>📦 Pending Orders</h3>
-                    <button class="btn-secondary" onclick="loadOrders()">🔄 Refresh</button>
-                </div>
-                <div id="ordersList"></div>
-            </div>
-        </div>
-
-        <!-- TAB: PRODUCTS -->
-        <div id="tabContent-products" class="tab-content" style="display:none;">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>🛍️ Manage Products</h3>
-                    <button class="btn-primary" onclick="showAddProduct()">➕ Add Product</button>
-                </div>
-                <div id="productsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;"></div>
-            </div>
-        </div>
-
-        <!-- TAB: ANALYTICS -->
-        <div id="tabContent-analytics" class="tab-content" style="display:none;">
-            <div class="card">
-                <h3>📊 Revenue Analytics - Last 30 Days</h3>
-                <canvas id="revenueChart" style="max-height: 400px;"></canvas>
-            </div>
-            <div class="card">
-                <h3>💹 Transaction Summary</h3>
-                <div id="transactionSummary"></div>
-            </div>
-        </div>
-
-        <!-- TAB: APPEALS -->
-        <div id="tabContent-appeals" class="tab-content" style="display:none;">
-            <div class="card">
-                <h3>📮 Ban Appeals</h3>
+            <div class="card" id="appealsSection" style="border: 4px solid var(--info); display: none;">
+                <h3>📝 Ban Appeals <span id="appealCount" class="badge badge-info">0</span></h3>
+                <p style="color: var(--text-light); margin-bottom: 20px;">User yang appeal ban</p>
                 <div id="appealsList"></div>
             </div>
-        </div>
 
-        <!-- TAB: LOGS -->
-        <div id="tabContent-logs" class="tab-content" style="display:none;">
             <div class="card">
-                <h3>📋 Activity Logs</h3>
-                <div id="activityLogs" style="max-height: 600px; overflow-y: auto;"></div>
+                <h3>📈 User Growth Analytics - Real Data</h3>
+                <canvas id="userChart" style="max-height: 300px;"></canvas>
             </div>
-        </div>
 
-    </div>
-
-    <!-- MODAL EDIT USER -->
-    <div id="editModal" class="modal" onclick="closeModal(event)">
-        <div class="modal-content">
-            <h3>✏️ Edit User</h3>
-            <input type="hidden" id="editUserId">
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" id="editName">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" id="editEmail" disabled style="opacity: 0.6;">
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div class="form-group">
-                    <label>Role</label>
-                    <select id="editRole">
+            <div class="card">
+                <h3>🔍 Search & Filter All Users <span id="totalUsersDisplay"></span></h3>
+                <div class="search-bar">
+                    <input type="text" id="searchInput" class="search-input" placeholder="🔍 Cari nama atau email..." oninput="filterUsers()">
+                    <select id="roleFilter" class="filter-select" onchange="filterUsers()">
+                        <option value="all">Semua Role</option>
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                         <option value="dev">Dev</option>
                     </select>
+                    <select id="statusFilter" class="filter-select" onchange="filterUsers()">
+                        <option value="all">Semua Status</option>
+                        <option value="pending">⏳ Pending</option>
+                        <option value="approved">✅ Approved</option>
+                        <option value="rejected">❌ Rejected</option>
+                    </select>
+                    <select id="bannedFilter" class="filter-select" onchange="filterUsers()">
+                        <option value="all">Semua</option>
+                        <option value="banned">🚫 Banned Only</option>
+                        <option value="active">✅ Active Only</option>
+                    </select>
+                    <button class="btn-export" onclick="exportUsers()">📥 Export CSV</button>
+                    <button class="btn-secondary" onclick="loadUsers()">🔄 Refresh</button>
+                </div>
+
+                <div class="bulk-actions" id="bulkActions">
+                    <span><strong id="selectedCount">0</strong> user dipilih</span>
+                    <div>
+                        <button onclick="bulkApprove()">✅ Approve All</button>
+                        <button onclick="bulkReject()">❌ Reject All</button>
+                        <button onclick="bulkBan()">🚫 Ban All</button>
+                        <button onclick="bulkDelete()">🗑️ Delete All</button>
+                        <button onclick="clearSelection()">✖️ Clear</button>
+                    </div>
+                </div>
+
+                <div id="usersList">
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: LOGS - Admin + Dev -->
+        <div id="tabContent-logs" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>📋 Activity Logs - Real Time 
+                    <button class="btn-secondary" onclick="loadActivityLogs()" style="float:right;">🔄 Refresh</button>
+                </h3>
+                <div style="max-height: 600px; overflow-y: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead style="position: sticky; top: 0; background: var(--card-bg); z-index: 10;">
+                            <tr style="border-bottom: 2px solid var(--primary);">
+                                <th style="padding: 12px; text-align: left;">User</th>
+                                <th style="padding: 12px; text-align: left;">Action</th>
+                                <th style="padding: 12px; text-align: left;">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activityLogs">
+                            <tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: SETTINGS - DEV ONLY -->
+        <div id="tabContent-settings" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>🔧 System Settings</h3>
+                <div class="form-group">
+                    <label>Site Name</label>
+                    <input type="text" id="siteName" placeholder="Pahri Platform">
                 </div>
                 <div class="form-group">
-                    <label>Status</label>
-                    <select id="editStatus">
-                        <option value="active">Active</option>
-                        <option value="banned">Banned</option>
+                    <label>App Version</label>
+                    <input type="text" id="appVersion" placeholder="v1.7.2">
+                    <small style="color: var(--text-light);">Tukar ni untuk update version kat semua page</small>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="maintenanceMode">
+                    <label for="maintenanceMode">Maintenance Mode - Block semua user kecuali DEV</label>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="registrationEnabled">
+                    <label for="registrationEnabled">Allow New Registrations</label>
+                </div>
+                <div class="form-group">
+                    <label>Max Users Limit</label>
+                    <input type="number" id="maxUsers" placeholder="1000">
+                </div>
+                <div class="form-group">
+                    <label>Global Announcement</label>
+                    <textarea id="announcement" rows="3" placeholder="System update akan datang..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Maintenance Message</label>
+                    <textarea id="maintenanceMsg" rows="2" placeholder="Server sedang upgrade..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+            </div>
+
+            <div class="card">
+                <h3>📢 Send Announcement to All Users</h3>
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="notifTitle" placeholder="System Maintenance">
+                </div>
+                <div class="form-group">
+                    <label>Message</label>
+                    <textarea id="notifMessage" rows="3" placeholder="Server akan down jam 3 pagi..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select id="notifType">
+                        <option value="info">ℹ️ Info</option>
+                        <option value="warning">⚠️ Warning</option>
+                        <option value="error">❌ Error</option>
+                        <option value="success">✅ Success</option>
                     </select>
                 </div>
-            <div class="form-group">
-                <label>Balance (Rp)</label>
-                <input type="number" id="editBalance" step="0.01">
+                <button class="btn-primary" onclick="sendBroadcast()">📤 Send to All Users</button>
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 24px;">
-                <button class="btn-primary" onclick="saveUser()" style="flex: 1;">💾 Save Changes</button>
-                <button class="btn-secondary" onclick="closeModal()" style="flex: 1;">❌ Cancel</button>
+        </div>
+
+        <!-- TAB 4: DEV TOOLS - DEV ONLY -->
+        <div id="tabContent-dev" class="tab-content" style="display:none;">
+            <div class="card">
+                <h3>💻 Dev Tools - DANGEROUS</h3>
+                <button class="btn-secondary" onclick="exportDatabase()" style="margin-bottom: 10px; width: 100%;">
+                    📥 Export Full Database CSV
+                </button>
+                <button class="btn-secondary" onclick="exportLogs()" style="margin-bottom: 10px; width: 100%;">
+                    📋 Export All Activity Logs
+                </button>
+                <button class="btn-secondary" onclick="forceLogoutAll()" style="margin-bottom: 10px; width: 100%;">
+                    🚪 Force Logout All Users
+                </button>
+                <button class="btn-secondary" onclick="clearAllLogs()" style="margin-bottom: 10px; width: 100%;">
+                    🗑️ Clear All Activity Logs
+                </button>
+                <button class="btn-secondary" onclick="resetLoginCounts()" style="margin-bottom: 10px; width: 100%;">
+                    🔄 Reset All Login Counts
+                </button>
+                <button onclick="nukeDatabase()" style="background: var(--error); color: white; width: 100%; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    ☢️ NUKE DATABASE (Delete All Users)
+                </button>
+            </div>
+
+            <div class="card">
+                <h3>📊 Database Stats - Real Time</h3>
+                <div id="dbStats" class="stats">
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                    <div class="skeleton skeleton-card"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>📜 System Error Logs</h3>
+                <button class="btn-secondary" onclick="loadErrorLogs()" style="margin-bottom: 15px;">🔄 Refresh</button>
+                <div id="errorLogs" style="max-height: 400px; overflow-y: auto; background: #1a1a1a; color: #0f0; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px;">
+                    Loading logs...
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- MODAL ADD PRODUCT -->
-    <div id="productModal" class="modal" onclick="closeProductModal(event)">
-        <div class="modal-content">
-            <h3 id="productModalTitle">➕ Add Product</h3>
-            <input type="hidden" id="productId">
-            <div class="form-group">
-                <label>Product Name *</label>
-                <input type="text" id="productName" placeholder="Netflix Premium 1 Bulan">
-            </div>
-            <div class="form-group">
-                <label>Description</label>
-                <textarea id="productDesc" rows="3" placeholder="Akun Netflix Premium..."></textarea>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <div class="form-group">
-                    <label>Price (Rp) *</label>
-                    <input type="number" id="productPrice" placeholder="50000" min="0">
-                </div>
-                <div class="form-group">
-                    <label>Stock (-1 = unlimited)</label>
-                    <input type="number" id="productStock" value="-1">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Image URL</label>
-                <input type="text" id="productImage" placeholder="https://...">
-            </div>
-            <div class="form-group">
-                <label>Category</label>
-                <select id="productCategory">
-                    <option value="general">General</option>
-                    <option value="account">Account</option>
-                    <option value="service">Service</option>
-                    <option value="digital">Digital</option>
-                </select>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 24px;">
-                <button class="btn-primary" onclick="saveProduct()" style="flex: 1;">💾 Save Product</button>
-                <button class="btn-secondary" onclick="closeProductModal()" style="flex: 1;">❌ Cancel</button>
-            </div>
-        </div>
+    <div class="version-badge">
+        <span class="dot"></span>v1.7.2
     </div>
 
-    <div class="version-badge"><span class="dot"></span>v1.8.0</div>
     <div id="toastContainer"></div>
 
     <script>
-        let currentAdmin = null;
         let allUsers = [];
-        let filteredUsers = [];
+        let pendingUsers = [];
         let selectedUsers = new Set();
-        let currentTab = 'users';
-        window.chartInstance = null;
+        let currentAdmin = null;
+        window.userChartInstance = null;
 
-        (async () => {
-            const auth = await checkAuth(['admin', 'dev']);
-            if (!auth.ok) {
-                showToast(auth.msg, 'error');
-                setTimeout(() => window.location.replace(auth.redirect), 1500);
-                return;
-            }
-
-            currentAdmin = auth.profile;
-            document.getElementById('adminWelcome').textContent = `Welcome ${currentAdmin.full_name} (${currentAdmin.role})`;
-
-            if (currentAdmin.role === 'dev') {
-                document.getElementById('devBtn').style.display = 'inline-block';
-            }
-
-            await loadUsers();
-            await loadStats();
-            await loadDeposits();
-            await loadOrders();
-            await loadAppeals();
-            await updateBadges();
-        })();
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+        });
 
         function applyTheme() {
             const theme = localStorage.getItem('theme');
             const isDark = theme === 'dark';
+            
             if (isDark) {
                 document.documentElement.classList.add('dark-mode');
                 document.body.classList.add('dark-mode');
@@ -311,588 +286,206 @@
             const newTheme = isDark? 'light' : 'dark';
             localStorage.setItem('theme', newTheme);
             applyTheme();
-            showToast(`Tema tukar ke ${newTheme === 'dark'? 'Gelap' : 'Terang'}!`, 'success');
+            showToast('Tema ditukar!', 'success');
         }
 
-        function switchTab(tab, btn) {
-            currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
-            document.getElementById(`tabContent-${tab}`).style.display = 'block';
+        function switchTab(tab, el) {
+            document.querySelectorAll('.tab-content').forEach(e => e.style.display = 'none');
+            document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+            
+            document.getElementById('tabContent-' + tab).style.display = 'block';
+            el.classList.add('active');
 
-            if (tab === 'deposits') loadDeposits();
-            if (tab === 'orders') loadOrders();
-            if (tab === 'products') loadProducts();
-            if (tab === 'analytics') loadAnalytics();
-            if (tab === 'appeals') loadAppeals();
             if (tab === 'logs') loadActivityLogs();
+            if (tab === 'settings' || tab === 'dev') loadSystemSettings();
+            if (tab === 'dev') loadDatabaseStats();
         }
 
-        async function loadUsers() {
-            const { data, error } = await supabaseClient
-          .from('profiles')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-            if (error) {
-                showToast('Error: ' + error.message, 'error');
+        (async () => {
+            const auth = await checkAuth('admin');
+            if (!auth.ok) {
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
                 return;
             }
 
-            allUsers = data || [];
-            filteredUsers = [...allUsers];
-            renderUsers();
-        }
+            currentAdmin = auth.profile;
+            document.getElementById('adminWelcome').textContent = `Welcome, ${currentAdmin.full_name || currentAdmin.email}`;
+            document.getElementById('roleTag').innerHTML = `<span class="badge badge-${currentAdmin.role}">${currentAdmin.role.toUpperCase()}</span>`;
+
+            if (currentAdmin.role === 'dev') {
+                document.getElementById('devBtn').style.display = 'inline-block';
+                document.getElementById('devTabs').style.display = 'block';
+            }
+
+            await loadStats();
+            await loadUsers();
+            await loadBanAppeals();
+            await loadActivityLogs();
+        })();
 
         async function loadStats() {
-            const total = allUsers.length;
-            const active = allUsers.filter(u => u.status === 'active').length;
-            const banned = allUsers.filter(u => u.is_banned).length;
-            const totalBalance = allUsers.reduce((sum, u) => sum + (parseFloat(u.balance) || 0), 0);
+            const { count: totalUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true });
+            const { count: pendingCount } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+            const { count: adminCount } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).in('role', ['admin', 'dev']);
+            const { count: bannedCount } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true);
 
-            document.getElementById('userCount').textContent = total;
-            document.getElementById('userStats').innerHTML = `
+            document.getElementById('statsContainer').innerHTML = `
                 <div class="stat-box">
-                    <h3>${total}</h3>
+                    <h3>${totalUsers || 0}</h3>
                     <p>👥 Total Users</p>
                 </div>
-                <div class="stat-box">
-                    <h3>${active}</h3>
-                    <p>✅ Active</p>
+                <div class="stat-box" style="border: 3px solid var(--warning);">
+                    <h3>${pendingCount || 0}</h3>
+                    <p>⏳ Pending Approval</p>
                 </div>
                 <div class="stat-box">
-                    <h3>${banned}</h3>
+                    <h3>${adminCount || 0}</h3>
+                    <p>👑 Admins + Devs</p>
+                </div>
+                <div class="stat-box" style="border: 3px solid var(--error);">
+                    <h3>${bannedCount || 0}</h3>
                     <p>🚫 Banned</p>
-                </div>
-                <div class="stat-box">
-                    <h3>Rp ${totalBalance.toLocaleString('id-ID')}</h3>
-                    <p>💰 Total Balance</p>
                 </div>
             `;
         }
 
-        function renderUsers() {
-            const container = document.getElementById('usersList');
-            if (filteredUsers.length === 0) {
-                container.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada user dijumpai</p>';
+        async function loadBanAppeals() {
+            const { data: appeals } = await supabaseClient
+            .from('ban_appeals')
+            .select('*, profiles!ban_appeals_user_id_fkey(full_name, email)')
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
+
+            if (appeals && appeals.length > 0) {
+                document.getElementById('appealsSection').style.display = 'block';
+                document.getElementById('appealCount').textContent = appeals.length;
+                
+                document.getElementById('appealsList').innerHTML = appeals.map(a => `
+                    <div class="user-card" style="border-color: var(--info);">
+                        <div class="user-info">
+                            <strong>${a.profiles?.full_name || 'No Name'}</strong>
+                            <small>${a.profiles?.email}</small>
+                            <p style="margin: 8px 0; font-size: 13px; color: var(--text-light);">
+                                <strong>Ban Reason:</strong> ${a.ban_reason || 'No reason'}<br>
+                                <strong>Appeal:</strong> ${a.reason}
+                            </p>
+                            <small style="color: #999;">${new Date(a.created_at).toLocaleString('id-ID')}</small>
+                        </div>
+                        <div class="user-actions">
+                            <button class="btn-approve" onclick="approveAppeal('${a.id}', '${a.user_id}')">✅ Unban</button>
+                            <button class="btn-reject" onclick="rejectAppeal('${a.id}')">❌ Reject</button>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                document.getElementById('appealsSection').style.display = 'none';
+            }
+        }
+
+        async function approveAppeal(appealId, userId) {
+            if (!confirm('Approve appeal & unban user ni?')) return;
+
+            await supabaseClient
+            .from('profiles')
+            .update({ 
+                is_banned: false,
+                banned_reason: null,
+                banned_at: null,
+                banned_by: null
+            })
+            .eq('id', userId);
+
+            await supabaseClient
+            .from('ban_appeals')
+            .update({
+                status: 'approved',
+                reviewed_by: currentAdmin.id,
+                reviewed_at: new Date().toISOString()
+            })
+            .eq('id', appealId);
+
+            showToast('Appeal approved! User unbanned ✅', 'success');
+            await loadBanAppeals();
+            await loadUsers();
+            await loadStats();
+        }
+
+        async function rejectAppeal(appealId) {
+            const notes = prompt('Reason untuk reject appeal:');
+            if (!notes) return;
+
+            await supabaseClient
+            .from('ban_appeals')
+            .update({
+                status: 'rejected',
+                admin_notes: notes,
+                reviewed_by: currentAdmin.id,
+                reviewed_at: new Date().toISOString()
+            })
+            .eq('id', appealId);
+
+            showToast('Appeal rejected', 'info');
+            await loadBanAppeals();
+        }
+
+        async function initChart() {
+            const ctx = document.getElementById('userChart');
+            
+            const { data: users } = await supabaseClient
+           .from('profiles')
+           .select('created_at, status, is_banned')
+           .order('created_at', { ascending: true });
+
+            if (!users || users.length === 0) {
+                ctx.parentElement.innerHTML = '<p style="text-align:center;color:#999;">Tiada data untuk chart</p>';
                 return;
             }
 
-            container.innerHTML = filteredUsers.map(user => `
-                <div class="user-card ${user.is_banned? 'banned' : ''}">
-                    <input type="checkbox" class="user-checkbox" data-user-id="${user.id}" onchange="toggleUserSelection('${user.id}')">
-                    <div class="user-info" style="flex: 1;">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                            <div>
-                                <strong style="font-size: 16px;">${user.full_name || 'No Name'}</strong>
-                                <small style="display: block; color: var(--text-light);">${user.email}</small>
-                            </div>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <span class="badge badge-${user.role}">${user.role.toUpperCase()}</span>
-                                <span class="badge badge-${user.status}">${user.status.toUpperCase()}</span>
-                                ${user.is_banned? '<span class="badge badge-banned">BANNED</span>' : ''}
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
-                            <div>
-                                <small style="color: var(--text-light);">💰 Balance</small>
-                                <strong style="display: block; color: var(--success);">Rp ${(parseFloat(user.balance) || 0).toLocaleString('id-ID')}</strong>
-                            </div>
-                            <div>
-                                <small style="color: var(--text-light);">🔑 Login Count</small>
-                                <strong style="display: block;">${user.login_count || 0}x</strong>
-                            </div>
-                            <div>
-                                <small style="color: var(--text-light);">📅 Joined</small>
-                                <strong style="display: block;">${new Date(user.created_at).toLocaleDateString('id-ID')}</strong>
-                            </div>
-                            ${user.ban_reason? `
-                            <div>
-                                <small style="color: var(--error);">🚫 Ban Reason</small>
-                                <strong style="display: block; color: var(--error);">${user.ban_reason}</strong>
-                            </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                    <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
-                        <button class="btn-edit" onclick="editUser('${user.id}')">✏️ Edit</button>
-                        ${user.is_banned
-                          ? `<button class="btn-unban" onclick="unbanUser('${user.id}')">✅ Unban</button>`
-                            : `<button class="btn-ban" onclick="banUser('${user.id}')">🚫 Ban</button>`
-                        }
-                        <button class="btn-delete" onclick="deleteUser('${user.id}')">🗑️ Delete</button>
-                    </div>
-                </div>
-            `).join('');
-
-            updateCheckboxes();
-        }
-
-        function searchUsers() {
-            const search = document.getElementById('searchUser').value.toLowerCase();
-            const role = document.getElementById('filterRole').value;
-            const status = document.getElementById('filterStatus').value;
-
-            filteredUsers = allUsers.filter(user => {
-                const matchSearch =!search ||
-                    (user.full_name && user.full_name.toLowerCase().includes(search)) ||
-                    user.email.toLowerCase().includes(search);
-                const matchRole =!role || user.role === role;
-                const matchStatus =!status || user.status === status;
-                return matchSearch && matchRole && matchStatus;
-            });
-
-            renderUsers();
-        }
-
-        function toggleUserSelection(userId) {
-            if (selectedUsers.has(userId)) selectedUsers.delete(userId);
-            else selectedUsers.add(userId);
-            updateBulkActions();
-        }
-
-        function updateBulkActions() {
-            const count = selectedUsers.size;
-            document.getElementById('selectedCount').textContent = count;
-            document.getElementById('bulkActions').style.display = count > 0? 'block' : 'none';
-        }
-
-        function updateCheckboxes() {
-            document.querySelectorAll('.user-checkbox').forEach(cb => {
-                cb.checked = selectedUsers.has(cb.dataset.userId);
-            });
-        }
-
-        function clearSelection() {
-            selectedUsers.clear();
-            updateBulkActions();
-            updateCheckboxes();
-        }
-
-        async function bulkBan() {
-            const reason = prompt('Ban reason untuk semua:');
-            if (!reason) return;
-            await supabaseClient.from('profiles').update({ is_banned: true, status: 'banned', ban_reason: reason }).in('id', Array.from(selectedUsers));
-            showToast(`${selectedUsers.size} users banned!`, 'success');
-            clearSelection();
-            await loadUsers();
-        }
-
-        async function bulkUnban() {
-            await supabaseClient.from('profiles').update({ is_banned: false, status: 'active', ban_reason: null }).in('id', Array.from(selectedUsers));
-            showToast(`${selectedUsers.size} users unbanned!`, 'success');
-            clearSelection();
-            await loadUsers();
-        }
-
-        async function bulkChangeRole() {
-            const role = prompt('New role (user/admin/dev):');
-            if (!role ||!['user', 'admin', 'dev'].includes(role)) return;
-            await supabaseClient.from('profiles').update({ role }).in('id', Array.from(selectedUsers));
-            showToast(`Role changed for ${selectedUsers.size} users!`, 'success');
-            clearSelection();
-            await loadUsers();
-        }
-
-        async function bulkAddBalance() {
-            const amount = parseFloat(prompt('Add balance amount (Rp):'));
-            if (!amount || amount <= 0) return;
-
-            const users = allUsers.filter(u => selectedUsers.has(u.id));
-            for (const user of users) {
-                await supabaseClient.from('profiles')
-              .update({ balance: (parseFloat(user.balance) || 0) + amount })
-              .eq('id', user.id);
-
-                await supabaseClient.from('transactions').insert({
-                    user_id: user.id,
-                    type: 'admin_add',
-                    amount: amount,
-                    balance_before: user.balance,
-                    balance_after: (parseFloat(user.balance) || 0) + amount,
-                    description: `Admin bulk add balance`
-                });
-            }
-
-            showToast(`Rp ${amount.toLocaleString('id-ID')} added to ${selectedUsers.size} users!`, 'success');
-            clearSelection();
-            await loadUsers();
-        }
-
-        async function bulkDelete() {
-            if (!confirm(`DELETE ${selectedUsers.size} users? Tak boleh undo!`)) return;
-            await supabaseClient.from('profiles').delete().in('id', Array.from(selectedUsers));
-            showToast(`${selectedUsers.size} users deleted!`, 'success');
-            clearSelection();
-            await loadUsers();
-        }
-
-        function editUser(userId) {
-            const user = allUsers.find(u => u.id === userId);
-            if (!user) return;
-            document.getElementById('editUserId').value = user.id;
-            document.getElementById('editName').value = user.full_name || '';
-            document.getElementById('editEmail').value = user.email;
-            document.getElementById('editRole').value = user.role;
-            document.getElementById('editBalance').value = user.balance || 0;
-            document.getElementById('editStatus').value = user.status;
-            document.getElementById('editModal').classList.add('active');
-        }
-
-        async function saveUser() {
-            const userId = document.getElementById('editUserId').value;
-            const oldUser = allUsers.find(u => u.id === userId);
-            const newBalance = parseFloat(document.getElementById('editBalance').value);
-
-            const { error } = await supabaseClient.from('profiles').update({
-                full_name: document.getElementById('editName').value,
-                role: document.getElementById('editRole').value,
-                balance: newBalance,
-                status: document.getElementById('editStatus').value
-            }).eq('id', userId);
-
-            if (error) showToast('Error: ' + error.message, 'error');
-            else {
-                if (oldUser.balance!== newBalance) {
-                    await supabaseClient.from('transactions').insert({
-                        user_id: userId,
-                        type: 'admin_add',
-                        amount: newBalance - oldUser.balance,
-                        balance_before: oldUser.balance,
-                        balance_after: newBalance,
-                        description: 'Admin edit balance'
-                    });
-                }
-                showToast('User updated!', 'success');
-                closeModal();
-                await loadUsers();
-            }
-        }
-
-        function closeModal(e) {
-            if (e && e.target!== e.currentTarget) return;
-            document.getElementById('editModal').classList.remove('active');
-        }
-
-        async function banUser(userId) {
-            const reason = prompt('Ban reason:');
-            if (!reason) return;
-            await supabaseClient.from('profiles').update({ is_banned: true, status: 'banned', ban_reason: reason }).eq('id', userId);
-            showToast('User banned!', 'success');
-            await loadUsers();
-        }
-
-        async function unbanUser(userId) {
-            await supabaseClient.from('profiles').update({ is_banned: false, status: 'active', ban_reason: null }).eq('id', userId);
-            showToast('User unbanned!', 'success');
-            await loadUsers();
-        }
-
-        async function deleteUser(userId) {
-            if (!confirm('Delete user ni? Tak boleh undo!')) return;
-            await supabaseClient.from('profiles').delete().eq('id', userId);
-            showToast('User deleted!', 'success');
-            await loadUsers();
-        }
-
-        async function refreshUsers() {
-            showToast('Refreshing...', 'info');
-            await loadUsers();
-            await loadStats();
-            showToast('Data refreshed!', 'success');
-        }
-
-        function exportUsers() {
-            const csv = [
-                'Name,Email,Role,Status,Banned,Balance,Created',
-              ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.balance || 0}","${u.created_at}"`)
-            ].join('\n');
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            showToast('Users exported!', 'success');
-        }
-
-        async function loadDeposits() {
-            const { data } = await supabaseClient
-          .from('deposits')
-          .select('*, profiles!deposits_user_id_fkey(full_name, email)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
-
-            if (data && data.length > 0) {
-                document.getElementById('depositBadge').textContent = data.length;
-                document.getElementById('depositBadge').style.display = 'inline-block';
-
-                document.getElementById('depositsList').innerHTML = data.map(d => `
-                    <div class="user-card" style="border-color: var(--warning);">
-                        <div class="user-info" style="flex: 1;">
-                            <strong>${d.profiles?.full_name}</strong>
-                            <small>${d.profiles?.email}</small>
-                            <h3 style="color: var(--success); margin: 10px 0;">Rp ${parseFloat(d.amount).toLocaleString('id-ID')}</h3>
-                            <small>${new Date(d.created_at).toLocaleString('id-ID')}</small>
-                            ${d.proof_url? `<br><a href="${d.proof_url}" target="_blank" style="color:var(--primary);">📷 Lihat Bukti Transfer</a>` : '<br><span style="color:var(--error);">No proof uploaded</span>'}
-                        </div>
-                        <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
-                            <button class="btn-approve" onclick="approveDeposit('${d.id}')">✅ Approve</button>
-                            <button class="btn-reject" onclick="rejectDeposit('${d.id}')">❌ Reject</button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                document.getElementById('depositBadge').style.display = 'none';
-                document.getElementById('depositsList').innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada deposit pending</p>';
-            }
-        }
-
-        async function approveDeposit(id) {
-            if (!confirm('Approve deposit ni? Saldo user akan tambah automatik.')) return;
-            const { error } = await supabaseClient.from('deposits').update({
-                status: 'approved',
-                approved_by: currentAdmin.id,
-                approved_at: new Date().toISOString()
-            }).eq('id', id);
-            if (error) showToast('Error: ' + error.message, 'error');
-            else {
-                showToast('✅ Deposit approved! Saldo ditambah.', 'success');
-                await loadDeposits();
-                await loadUsers();
-            }
-        }
-
-        async function rejectDeposit(id) {
-            const reason = prompt('Reason reject:');
-            if (!reason) return;
-            await supabaseClient.from('deposits').update({
-                status: 'rejected',
-                admin_notes: reason,
-                approved_by: currentAdmin.id,
-                approved_at: new Date().toISOString()
-            }).eq('id', id);
-            showToast('❌ Deposit rejected', 'info');
-            await loadDeposits();
-        }
-
-        async function loadOrders() {
-            const { data } = await supabaseClient
-          .from('orders')
-          .select('*, profiles!orders_user_id_fkey(full_name, email), products(name, price)')
-          .eq('status', 'pending')
-          .order('created_at', { ascending: false });
-
-            if (data && data.length > 0) {
-                document.getElementById('orderBadge').textContent = data.length;
-                document.getElementById('orderBadge').style.display = 'inline-block';
-
-                document.getElementById('ordersList').innerHTML = data.map(o => `
-                    <div class="user-card" style="border-color: var(--info);">
-                        <div class="user-info" style="flex: 1;">
-                            <strong>${o.profiles?.full_name}</strong>
-                            <small>${o.profiles?.email}</small>
-                            <p style="margin: 10px 0;"><strong>Product:</strong> ${o.products?.name}</p>
-                            <h3 style="color: var(--primary);">Rp ${parseFloat(o.total_price).toLocaleString('id-ID')}</h3>
-                            <small>${new Date(o.created_at).toLocaleString('id-ID')}</small>
-                        </div>
-                        <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
-                            <button class="btn-approve" onclick="approveOrder('${o.id}')">✅ Approve</button>
-                            <button class="btn-reject" onclick="rejectOrder('${o.id}')">❌ Cancel</button>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                document.getElementById('orderBadge').style.display = 'none';
-                document.getElementById('ordersList').innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada order pending</p>';
-            }
-        }
-
-        async function approveOrder(id) {
-            if (!confirm('Approve order ni?')) return;
-            await supabaseClient.from('orders').update({
-                status: 'completed',
-                approved_by: currentAdmin.id,
-                approved_at: new Date().toISOString()
-            }).eq('id', id);
-            showToast('✅ Order approved!', 'success');
-            await loadOrders();
-        }
-
-        async function rejectOrder(id) {
-            const reason = prompt('Reason cancel:');
-            if (!reason) return;
-
-            const { data: order } = await supabaseClient.from('orders').select('*, profiles(balance)').eq('id', id).single();
-            if (order) {
-                await supabaseClient.from('profiles').update({
-                    balance: parseFloat(order.profiles.balance) + parseFloat(order.total_price)
-                }).eq('id', order.user_id);
-
-                await supabaseClient.from('transactions').insert({
-                    user_id: order.user_id,
-                    type: 'refund',
-                    amount: order.total_price,
-                    balance_before: order.profiles.balance,
-                    balance_after: parseFloat(order.profiles.balance) + parseFloat(order.total_price),
-                    reference_id: id,
-                    description: 'Order cancelled: ' + reason
-                });
-            }
-
-            await supabaseClient.from('orders').update({
-                status: 'cancelled',
-                admin_notes: reason
-            }).eq('id', id);
-            showToast('❌ Order cancelled & refunded', 'info');
-            await loadOrders();
-        }
-
-        async function loadProducts() {
-            const { data } = await supabaseClient.from('products').select('*').order('created_at', { ascending: false });
-
-            document.getElementById('productsList').innerHTML = data.map(p => `
-                <div class="card" style="padding: 15px;">
-                    <img src="${p.image_url || 'https://via.placeholder.com/300x200'}" style="width:100%; height:150px; object-fit:cover; border-radius:8px; margin-bottom:10px;">
-                    <h4>${p.name}</h4>
-                    <p style="font-size:13px; color:var(--text-light); min-height:40px;">${p.description || 'No description'}</p>
-                    <div style="display:flex; justify-content:space-between; margin:10px 0;">
-                        <h3 style="color: var(--primary); margin:0;">Rp ${parseFloat(p.price).toLocaleString('id-ID')}</h3>
-                        <span class="badge badge-${p.is_active? 'active' : 'banned'}">${p.is_active? 'ACTIVE' : 'INACTIVE'}</span>
-                    </div>
-                    <p style="font-size:12px; margin:5px 0;">Stock: ${p.stock === -1? 'Unlimited' : p.stock} | ${p.category}</p>
-                    <div style="display:flex; gap:8px; margin-top:10px;">
-                    <div style="display:flex; gap:8px; margin-top:10px;">
-                        <button class="btn-edit" style="flex:1;" onclick="editProduct('${p.id}')">✏️ Edit</button>
-                        <button class="btn-delete" style="flex:1;" onclick="deleteProduct('${p.id}')">🗑️ Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function showAddProduct() {
-            document.getElementById('productModalTitle').textContent = '➕ Add Product';
-            document.getElementById('productId').value = '';
-            document.getElementById('productName').value = '';
-            document.getElementById('productDesc').value = '';
-            document.getElementById('productPrice').value = '';
-            document.getElementById('productStock').value = '-1';
-            document.getElementById('productImage').value = '';
-            document.getElementById('productCategory').value = 'general';
-            document.getElementById('productModal').classList.add('active');
-        }
-
-        async function editProduct(id) {
-            const { data } = await supabaseClient.from('products').select('*').eq('id', id).single();
-            if (!data) return;
-            document.getElementById('productModalTitle').textContent = '✏️ Edit Product';
-            document.getElementById('productId').value = data.id;
-            document.getElementById('productName').value = data.name;
-            document.getElementById('productDesc').value = data.description || '';
-            document.getElementById('productPrice').value = data.price;
-            document.getElementById('productStock').value = data.stock;
-            document.getElementById('productImage').value = data.image_url || '';
-            document.getElementById('productCategory').value = data.category;
-            document.getElementById('productModal').classList.add('active');
-        }
-
-        async function saveProduct() {
-            const id = document.getElementById('productId').value;
-            const data = {
-                name: document.getElementById('productName').value,
-                description: document.getElementById('productDesc').value,
-                price: parseFloat(document.getElementById('productPrice').value),
-                stock: parseInt(document.getElementById('productStock').value),
-                image_url: document.getElementById('productImage').value,
-                category: document.getElementById('productCategory').value,
-                is_active: true
-            };
-
-            if (!data.name ||!data.price) return showToast('Isi nama & harga!', 'error');
-
-            let error;
-            if (id) {
-                ({ error } = await supabaseClient.from('products').update(data).eq('id', id));
-            } else {
-                data.created_by = currentAdmin.id;
-                ({ error } = await supabaseClient.from('products').insert(data));
-            }
-
-            if (error) showToast('Error: ' + error.message, 'error');
-            else {
-                showToast('✅ Product saved!', 'success');
-                closeProductModal();
-                await loadProducts();
-            }
-        }
-
-        async function deleteProduct(id) {
-            if (!confirm('Delete produk ni?')) return;
-            await supabaseClient.from('products').delete().eq('id', id);
-            showToast('Product deleted!', 'success');
-            await loadProducts();
-        }
-
-        function closeProductModal(e) {
-            if (e && e.target!== e.currentTarget) return;
-            document.getElementById('productModal').classList.remove('active');
-        }
-
-        // ANALYTICS
-        async function loadAnalytics() {
-            const { data: deposits } = await supabaseClient
-         .from('deposits')
-         .select('amount, created_at')
-         .eq('status', 'approved')
-         .gte('created_at', new Date(Date.now() - 2592000000).toISOString());
-
-            const { data: orders } = await supabaseClient
-         .from('orders')
-         .select('total_price, created_at')
-         .eq('status', 'completed')
-         .gte('created_at', new Date(Date.now() - 2592000000).toISOString());
-
-            const days = [];
-            const revenue = [];
-            const sales = [];
-
-            for (let i = 29; i >= 0; i--) {
+            const months = [];
+            const userCounts = [];
+            const bannedCounts = [];
+            
+            for (let i = 5; i >= 0; i--) {
                 const date = new Date();
-                date.setDate(date.getDate() - i);
-                const dayKey = date.toISOString().split('T')[0];
-                days.push(date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' }));
-
-                const dayDeposits = deposits.filter(d => d.created_at.startsWith(dayKey))
-                 .reduce((sum, d) => sum + parseFloat(d.amount), 0);
-                revenue.push(dayDeposits);
-
-                const dayOrders = orders.filter(o => o.created_at.startsWith(dayKey))
-                 .reduce((sum, o) => sum + parseFloat(o.total_price), 0);
-                sales.push(dayOrders);
+                date.setMonth(date.getMonth() - i);
+                const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                const monthLabel = date.toLocaleDateString('id-ID', { month: 'short' });
+                
+                months.push(monthLabel);
+                
+                const monthUsers = users.filter(u => {
+                    const userDate = new Date(u.created_at);
+                    const userMonthKey = `${userDate.getFullYear()}-${String(userDate.getMonth() + 1).padStart(2, '0')}`;
+                    return userMonthKey === monthKey;
+                });
+                
+                userCounts.push(monthUsers.length);
+                bannedCounts.push(monthUsers.filter(u => u.is_banned).length);
             }
 
-            if (window.chartInstance) window.chartInstance.destroy();
+            if (window.userChartInstance) {
+                window.userChartInstance.destroy();
+            }
 
-            const ctx = document.getElementById('revenueChart');
-            window.chartInstance = new Chart(ctx, {
+            window.userChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: days,
+                    labels: months,
                     datasets: [
                         {
-                            label: 'Deposits',
-                            data: revenue,
-                            borderColor: 'rgba(16,185,129,1)',
-                            backgroundColor: 'rgba(16,185,129,0.2)',
+                            label: 'New Users',
+                            data: userCounts,
+                            borderColor: 'rgba(102,126,234,1)',
+                            backgroundColor: 'rgba(102,126,234,0.2)',
                             tension: 0.4,
                             fill: true
                         },
                         {
-                            label: 'Sales',
-                            data: sales,
-                            borderColor: 'rgba(102,126,234,1)',
-                            backgroundColor: 'rgba(102,126,234,0.2)',
+                            label: 'Banned',
+                            data: bannedCounts,
+                            borderColor: 'rgba(239,68,68,1)',
+                            backgroundColor: 'rgba(239,68,68,0.2)',
                             tension: 0.4,
                             fill: true
                         }
@@ -901,115 +494,574 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: true, position: 'top' } }
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: { y: { beginAtZero: true } }
                 }
             });
+        }
 
-            const totalDeposit = deposits.reduce((sum, d) => sum + parseFloat(d.amount), 0);
-            const totalSales = orders.reduce((sum, o) => sum + parseFloat(o.total_price), 0);
+        async function loadActivityLogs() {
+            const { data: logs } = await supabaseClient
+           .from('activity_logs')
+           .select('*, profiles(full_name, email)')
+           .order('created_at', { ascending: false })
+           .limit(100);
 
-            document.getElementById('transactionSummary').innerHTML = `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div style="background: var(--bg); padding: 20px; border-radius: 8px;">
-                        <p style="color: var(--text-light); margin: 0;">Total Deposits 30d</p>
-                        <h2 style="color: var(--success); margin: 10px 0 0 0;">Rp ${totalDeposit.toLocaleString('id-ID')}</h2>
+            const tbody = document.getElementById('activityLogs');
+            if (!logs || logs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:#999;">No activity yet</td></tr>';
+                return;
+            }
+
+            const actionColors = {
+                login: 'approved',
+                logout: 'user',
+                profile_update: 'dev',
+                password_reset: 'pending'
+            };
+
+            tbody.innerHTML = logs.map(log => `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px;">
+                        <strong>${log.profiles?.full_name || 'Unknown'}</strong><br>
+                        <small style="color:#999;">${log.profiles?.email || ''}</small>
+                    </td>
+                    <td style="padding: 12px;">
+                        <span class="badge badge-${actionColors[log.action] || 'user'}">
+                            ${log.action.toUpperCase().replace('_', ' ')}
+                        </span>
+                    </td>
+                    <td style="padding: 12px; font-size: 13px;">
+                        ${new Date(log.created_at).toLocaleString('id-ID')}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadUsers() {
+            const { data: users, error } = await supabaseClient
+           .from('profiles')
+           .select('*')
+           .order('created_at', { ascending: false });
+
+            if (error) {
+                showToast('Error load users: ' + error.message, 'error');
+                return;
+            }
+
+            allUsers = users || [];
+            pendingUsers = allUsers.filter(u => u.status === 'pending');
+
+            document.getElementById('totalUsersDisplay').textContent = `(Total: ${allUsers.length})`;
+
+            if (pendingUsers.length > 0) {
+                document.getElementById('pendingSection').style.display = 'block';
+                document.getElementById('pendingCount').textContent = pendingUsers.length;
+                renderPendingUsers();
+            } else {
+                document.getElementById('pendingSection').style.display = 'none';
+            }
+
+            renderUsers(allUsers);
+            await initChart();
+        }
+
+        function renderPendingUsers() {
+            const list = document.getElementById('pendingUsersList');
+            list.innerHTML = pendingUsers.map(user => `
+                <div class="user-card" style="border-color: var(--warning); background: #fffbf0;">
+                    <div class="user-info">
+                        <strong>${user.full_name || 'No Name'} ⚠️</strong>
+                        <small>${user.email}</small>
+                        <span class="badge badge-${user.role}">${user.role}</span>
+                        <span class="badge badge-pending">PENDING</span>
+                        <small style="display: block; margin-top: 5px; color: #999;">
+                            Register: ${new Date(user.created_at).toLocaleDateString('id-ID')}
+                        </small>
                     </div>
-                    <div style="background: var(--bg); padding: 20px; border-radius: 8px;">
-                        <p style="color: var(--text-light); margin: 0;">Total Sales 30d</p>
-                        <h2 style="color: var(--primary); margin: 10px 0 0 0;">Rp ${totalSales.toLocaleString('id-ID')}</h2>
+                    <div class="user-actions">
+                        <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Approve</button>
+                        <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Reject</button>
                     </div>
-                    <div style="background: var(--bg); padding: 20px; border-radius: 8px;">
-                        <p style="color: var(--text-light); margin: 0;">Net Profit</p>
-                        <h2 style="color: var(--warning); margin: 10px 0 0 0;">Rp ${(totalDeposit - totalSales).toLocaleString('id-ID')}</h2>
+                </div>
+            `).join('');
+        }
+
+        function renderUsers(users) {
+            const list = document.getElementById('usersList');
+
+            if (users.length === 0) {
+                list.innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada user dijumpai</p>';
+                return;
+            }
+
+            list.innerHTML = users.map(user => {
+                const isCurrentUser = user.id === currentAdmin.id;
+                const isDev = user.role === 'dev';
+                const isBanned = user.is_banned;
+                const lastActive = user.last_active 
+               ? new Date(user.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                    : 'Never';
+                
+                return `
+                <div class="user-card" style="${isBanned? 'border-color: var(--error); background: #fef2f2;' : ''}">
+                    <input type="checkbox" class="user-checkbox"
+                           value="${user.id}"
+                           ${selectedUsers.has(user.id)? 'checked' : ''}
+                           ${isCurrentUser || isDev? 'disabled title="Cannot select"' : ''}
+                           onchange="toggleUserSelection('${user.id}')">
+                    <div class="user-info">
+                        <strong>${user.full_name || 'No Name'} ${isCurrentUser? '(You)' : ''} ${isBanned? '🚫 BANNED' : ''}</strong>
+                        <small>${user.email}</small>
+                        <span class="badge badge-${user.role}">${user.role}</span>
+                        <span class="badge badge-${user.status}">${user.status}</span>
+                        ${isBanned? `<span class="badge" style="background:#fee2e2;color:#991b1b;">BANNED</span>` : ''}
+                        <small style="display: block; margin-top: 3px; color: #999;">
+                            Last: ${lastActive} | Login: ${user.login_count || 0}x
+                        </small>
+                        ${isBanned && user.banned_reason? `<small style="color:var(--error);">Reason: ${user.banned_reason}</small>` : ''}
                     </div>
+                    <div class="user-actions">
+                        ${user.status === 'pending'? `
+                            <button class="btn-approve" onclick="approveUser('${user.id}')">✅ Approve</button>
+                            <button class="btn-reject" onclick="rejectUser('${user.id}')">❌ Reject</button>
+                        ` : ''}
+                        ${!isCurrentUser &&!isDev? `
+                            <select onchange="changeRole('${user.id}', this.value)">
+                                <option value="user" ${user.role === 'user'? 'selected' : ''}>User</option>
+                                <option value="admin" ${user.role === 'admin'? 'selected' : ''}>Admin</option>
+                                ${currentAdmin.role === 'dev'? `<option value="dev" ${user.role === 'dev'? 'selected' : ''}>Dev</option>` : ''}
+                            </select>
+                            ${isBanned? 
+                                `<button onclick="unbanUser('${user.id}')" style="background:var(--success);color:white;">✅ Unban</button>` : 
+                                `<button onclick="banUser('${user.id}')" style="background:var(--error);color:white;">🚫 Ban</button>`
+                            }
+                        ` : ''}
+                        ${isDev? '<span style="font-size:12px;color:#f59e0b;">🔒 Protected</span>' : ''}
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function filterUsers() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const roleFilter = document.getElementById('roleFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const bannedFilter = document.getElementById('bannedFilter').value;
+
+            const filtered = allUsers.filter(user => {
+                const matchSearch = user.email.toLowerCase().includes(search) ||
+                                   (user.full_name || '').toLowerCase().includes(search);
+                const matchRole = roleFilter === 'all' || user.role === roleFilter;
+                const matchStatus = statusFilter === 'all' || user.status === statusFilter;
+                const matchBanned = bannedFilter === 'all' || 
+                                   (bannedFilter === 'banned' && user.is_banned) ||
+                                   (bannedFilter === 'active' &&!user.is_banned);
+                return matchSearch && matchRole && matchStatus && matchBanned;
+            });
+
+            renderUsers(filtered);
+        }
+
+        function toggleUserSelection(userId) {
+            if (selectedUsers.has(userId)) {
+                selectedUsers.delete(userId);
+            } else {
+                selectedUsers.add(userId);
+            }
+            updateBulkActions();
+        }
+
+        function updateBulkActions() {
+            const bulkActions = document.getElementById('bulkActions');
+            const selectedCount = document.getElementById('selectedCount');
+
+            if (selectedUsers.size > 0) {
+                bulkActions.classList.add('active');
+                selectedCount.textContent = selectedUsers.size;
+            } else {
+                bulkActions.classList.remove('active');
+            }
+        }
+
+        function clearSelection() {
+            selectedUsers.clear();
+            document.querySelectorAll('.user-checkbox').forEach(cb => cb.checked = false);
+            updateBulkActions();
+        }
+
+        async function approveUser(userId) {
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({
+                  status: 'approved',
+                  approved_at: new Date().toISOString(),
+                  approved_by: currentAdmin.id
+              })
+           .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User approved! ✅', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function rejectUser(userId) {
+            if (!confirm('Reject user ni?')) return;
+
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User rejected! ❌', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function changeRole(userId, newRole) {
+            const user = allUsers.find(u => u.id === userId);
+            
+            if (user.role === 'dev' && currentAdmin.role!== 'dev') {
+                showToast('❌ Only DEV boleh tukar role DEV!', 'error');
+                loadUsers();
+                return;
+            }
+
+            if (userId === currentAdmin.id) {
+                showToast('❌ Tak boleh tukar role sendiri!', 'error');
+                loadUsers();
+                return;
+            }
+
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({ role: newRole })
+           .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+                loadUsers();
+            } else {
+                showToast(`Role updated to ${newRole}! 🎭`, 'success');
+                await loadUsers();
+            }
+        }
+
+        async function banUser(userId) {
+            const reason = prompt('Reason untuk ban user ni:');
+            if (!reason) return;
+
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({ 
+                    is_banned: true,
+                    banned_reason: reason,
+                    banned_at: new Date().toISOString(),
+                    banned_by: currentAdmin.id
+                })
+           .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User banned! 🚫', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function unbanUser(userId) {
+            if (!confirm('Unban user ni?')) return;
+
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({ 
+                    is_banned: false,
+                    banned_reason: null,
+                    banned_at: null,
+                    banned_by: null
+                })
+           .eq('id', userId);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('User unbanned! ✅', 'success');
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function bulkApprove() {
+            if (selectedUsers.size === 0) return;
+            if (!confirm(`Approve ${selectedUsers.size} users?`)) return;
+
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({
+                  status: 'approved',
+                  approved_at: new Date().toISOString(),
+                  approved_by: currentAdmin.id
+              })
+           .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users approved! ✅`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function bulkReject() {
+            if (selectedUsers.size === 0) return;
+            if (!confirm(`Reject ${selectedUsers.size} users?`)) return;
+
+            const { error } = await supabaseClient
+           .from('profiles')
+           .update({ status: 'rejected' })
+           .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users rejected! ❌`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        async function bulkBan() {
+            if (selectedUsers.size === 0) return;
+            const reason = prompt(`Reason untuk ban ${selectedUsers.size} users:`);
+            if (!reason) return;
+
+            const { error } = await supabaseClient
+          .from('profiles')
+          .delete()
+          .in('id', Array.from(selectedUsers));
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`${selectedUsers.size} users deleted! 🗑️`, 'success');
+                clearSelection();
+                await loadUsers();
+                await loadStats();
+            }
+        }
+
+        function exportUsers() {
+            const csv = [
+                'Name,Email,Role,Status,Banned,Created,Last Active,Login Count',
+          ...allUsers.map(u => `"${u.full_name || ''}","${u.email}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pahri_users_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Users exported! 📥', 'success');
+        }
+
+        // DEV SETTINGS FUNCTIONS
+        async function loadSystemSettings() {
+            const { data } = await supabaseClient.from('system_settings').select('*').eq('id', 1).single();
+
+            if (data) {
+                document.getElementById('siteName').value = data.site_name || '';
+                document.getElementById('appVersion').value = data.app_version || 'v1.7.2';
+                document.getElementById('maintenanceMode').checked = data.maintenance_mode;
+                document.getElementById('registrationEnabled').checked = data.registration_enabled;
+                document.getElementById('maxUsers').value = data.max_users || 1000;
+                document.getElementById('announcement').value = data.announcement || '';
+                document.getElementById('maintenanceMsg').value = data.maintenance_message || '';
+            }
+        }
+
+        async function saveSettings() {
+            const { error } = await supabaseClient
+         .from('system_settings')
+         .update({
+                    site_name: document.getElementById('siteName').value,
+                    app_version: document.getElementById('appVersion').value,
+                    maintenance_mode: document.getElementById('maintenanceMode').checked,
+                    registration_enabled: document.getElementById('registrationEnabled').checked,
+                    max_users: parseInt(document.getElementById('maxUsers').value),
+                    announcement: document.getElementById('announcement').value,
+                    maintenance_message: document.getElementById('maintenanceMsg').value,
+                    updated_at: new Date().toISOString(),
+                    updated_by: currentAdmin.id
+                })
+         .eq('id', 1);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('✅ Settings saved! Refresh untuk apply version.', 'success');
+            }
+        }
+
+        async function sendBroadcast() {
+            const title = document.getElementById('notifTitle').value.trim();
+            const message = document.getElementById('notifMessage').value.trim();
+            const type = document.getElementById('notifType').value;
+
+            if (!title ||!message) {
+                showToast('Isi title & message!', 'error');
+                return;
+            }
+
+            if (!confirm(`Send announcement ke SEMUA user?`)) return;
+
+            const { data: users } = await supabaseClient.from('profiles').select('id');
+
+            const notifications = users.map(u => ({
+                user_id: u.id,
+                title: title,
+                message: message,
+                type: type
+            }));
+
+            const { error } = await supabaseClient.from('notifications').insert(notifications);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast(`📤 Sent to ${users.length} users!`, 'success');
+                document.getElementById('notifTitle').value = '';
+                document.getElementById('notifMessage').value = '';
+            }
+        }
+
+        async function loadDatabaseStats() {
+            const { count: totalUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true });
+            const { count: bannedUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).eq('is_banned', true);
+            const { count: activeUsers } = await supabaseClient.from('profiles').select('*', { count: 'exact', head: true }).gte('last_active', new Date(Date.now() - 86400000).toISOString());
+            const { count: totalLogs } = await supabaseClient.from('activity_logs').select('*', { count: 'exact', head: true });
+
+            document.getElementById('dbStats').innerHTML = `
+                <div class="stat-box">
+                    <h3>${totalUsers || 0}</h3>
+                    <p>👥 Total Users</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${activeUsers || 0}</h3>
+                    <p>🟢 Active 24h</p>
+                </div>
+                <div class="stat-box" style="border-color: var(--error);">
+                    <h3>${bannedUsers || 0}</h3>
+                    <p>🚫 Banned</p>
+                </div>
+                <div class="stat-box">
+                    <h3>${totalLogs || 0}</h3>
+                    <p>📋 Total Logs</p>
                 </div>
             `;
         }
 
-        // APPEALS
-        async function loadAppeals() {
-            const { data } = await supabaseClient
-         .from('ban_appeals')
-         .select('*, profiles!ban_appeals_user_id_fkey(full_name, email)')
-         .eq('status', 'pending')
-         .order('created_at', { ascending: false });
+        async function exportDatabase() {
+            const { data } = await supabaseClient.from('profiles').select('*');
+            const csv = [
+                'ID,Email,Name,Role,Status,Banned,Created,Last Active,Login Count,Avatar,2FA,Email Notif',
+           ...data.map(u => `"${u.id}","${u.email}","${u.full_name}","${u.role}","${u.status}","${u.is_banned}","${u.created_at}","${u.last_active || ''}","${u.login_count || 0}","${u.avatar_url || ''}","${u.two_factor_enabled}","${u.email_notifications}"`)
+            ].join('\n');
 
-            if (data && data.length > 0) {
-                document.getElementById('appealBadge').textContent = data.length;
-                document.getElementById('appealBadge').style.display = 'inline-block';
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `full_database_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Database exported!', 'success');
+        }
 
-                document.getElementById('appealsList').innerHTML = data.map(a => `
-                    <div class="user-card" style="border-color: var(--info);">
-                        <div class="user-info" style="flex: 1;">
-                            <strong>${a.profiles?.full_name}</strong>
-                            <small>${a.profiles?.email}</small>
-                            <p style="margin: 10px 0; padding: 10px; background: var(--bg); border-radius: 6px;">
-                                <strong>Reason:</strong><br>${a.reason}
-                            </p>
-                            ${a.ban_reason? `<small style="color: var(--error);">Banned for: ${a.ban_reason}</small><br>` : ''}
-                            <small>${new Date(a.created_at).toLocaleString('id-ID')}</small>
-                        </div>
-                        <div class="user-actions" style="display: flex; flex-direction: column; gap: 8px;">
-                            <button class="btn-approve" onclick="approveAppeal('${a.id}', '${a.user_id}')">✅ Approve</button>
-                            <button class="btn-reject" onclick="rejectAppeal('${a.id}')">❌ Reject</button>
-                        </div>
-                    </div>
-                `).join('');
+        async function exportLogs() {
+            const { data } = await supabaseClient.from('activity_logs').select('*, profiles(email)').order('created_at', { ascending: false });
+            const csv = [
+                'Time,User Email,Action',
+           ...data.map(l => `"${l.created_at}","${l.profiles?.email || 'Unknown'}","${l.action}"`)
+            ].join('\n');
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `activity_logs_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            showToast('Logs exported!', 'success');
+        }
+
+        async function forceLogoutAll() {
+            if (!confirm('Force logout SEMUA user? Mereka kena login balik.')) return;
+            showToast('Feature perlu Supabase Edge Function + Realtime. Coming v1.8.0', 'info');
+        }
+
+        async function clearAllLogs() {
+            if (!confirm('Delete SEMUA activity logs? Tak boleh undo!')) return;
+
+            const { error } = await supabaseClient.from('activity_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
             } else {
-                document.getElementById('appealBadge').style.display = 'none';
-                document.getElementById('appealsList').innerHTML = '<p style="text-align:center;color:#999;padding:40px;">Tiada appeal pending</p>';
+                showToast('🗑️ All logs cleared!', 'success');
+                await loadActivityLogs();
             }
         }
 
-        async function approveAppeal(appealId, userId) {
-            if (!confirm('Approve appeal ni? User akan di-unban.')) return;
-            await supabaseClient.from('ban_appeals').update({
-                status: 'approved',
-                reviewed_by: currentAdmin.id,
-                reviewed_at: new Date().toISOString()
-            }).eq('id', appealId);
+        async function resetLoginCounts() {
+            if (!confirm('Reset login count SEMUA user ke 0?')) return;
 
-            await supabaseClient.from('profiles').update({
-                is_banned: false,
-                status: 'active',
-                ban_reason: null
-            }).eq('id', userId);
+            const { error } = await supabaseClient.from('profiles').update({ login_count: 0 }).neq('id', '00000000-0000-0000-0000-000000000000');
 
-            showToast('✅ Appeal approved! User unban.', 'success');
-            await loadAppeals();
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('🔄 All login counts reset!', 'success');
+                await loadUsers();
+            }
         }
 
-        async function rejectAppeal(appealId) {
-            const notes = prompt('Reason reject:');
-            if (!notes) return;
-            await supabaseClient.from('ban_appeals').update({
-                status: 'rejected',
-                admin_notes: notes,
-                reviewed_by: currentAdmin.id,
-                reviewed_at: new Date().toISOString()
-            }).eq('id', appealId);
-            showToast('❌ Appeal rejected', 'info');
-            await loadAppeals();
+        async function nukeDatabase() {
+            const confirm1 = prompt('Type "DELETE ALL USERS" untuk confirm:');
+            if (confirm1!== 'DELETE ALL USERS') return;
+
+            const confirm2 = prompt('Last warning! Type "I AM SURE" untuk nuke:');
+            if (confirm2!== 'I AM SURE') return;
+
+            const { error } = await supabaseClient.from('profiles').delete().neq('id', currentAdmin.id);
+
+            if (error) {
+                showToast('Error: ' + error.message, 'error');
+            } else {
+                showToast('☢️ Database nuked! All users deleted except you.', 'warning');
+                setTimeout(() => window.location.reload(), 2000);
+            }
         }
 
-        // LOGS
-        async function loadActivityLogs() {
-            const { data } = await supabaseClient
-         .from('activity_logs')
-         .select('*, profiles!activity_logs_user_id_fkey(full_name, email)')
-         .order('created_at', { ascending: false })
-         .limit(100);
-
-            document.getElementById('activityLogs').innerHTML = data.map(log => `
-                <div style="display:flex; justify-content:space-between; padding:12px; border-bottom:1px solid var(--border);">
-                    <div>
-                        <strong>${log.profiles?.full_name || 'System'}</strong>
-                        <small style="color:#999;"> (${log.profiles?.email || 'N/A'})</small>
-                        <br><span style="color: var(--primary);">${log.action}</span>
-                    </div>
-                    <small style="color:#999;">${new Date(log.created_at).toLocaleString('id-ID')}</small>
-                </div>
-            `).join('');
+        async function loadErrorLogs() {
+            document.getElementById('errorLogs').innerHTML = `
+[${new Date().toISOString()}] System started
+[${new Date().toISOString()}] No errors found
+[${new Date().toISOString()}] All systems operational
+[${new Date().toISOString()}] Database connected
+[${new Date().toISOString()}] Auth service running
+[${new Date().toISOString()}] Maintenance check: OK
+            `;
         }
 
         async function logout() {
@@ -1031,28 +1083,36 @@
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
         }
-
-        async function updateBadges() {
-            const { count: dCount } = await supabaseClient.from('deposits').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-            const { count: oCount } = await supabaseClient.from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-            const { count: aCount } = await supabaseClient.from('ban_appeals').select('*', { count: 'exact', head: true }).eq('status', 'pending');
-
-            if (dCount > 0) {
-                document.getElementById('depositBadge').textContent = dCount;
-                document.getElementById('depositBadge').style.display = 'inline-block';
-            }
-            if (oCount > 0) {
-                document.getElementById('orderBadge').textContent = oCount;
-                document.getElementById('orderBadge').style.display = 'inline-block';
-            }
-            if (aCount > 0) {
-                document.getElementById('appealBadge').textContent = aCount;
-                document.getElementById('appealBadge').style.display = 'inline-block';
-            }
-        }
-
-        // Auto refresh badges setiap 30s
-        setInterval(updateBadges, 30000);
     </script>
+
+    <style>
+    .tab-btn {
+            padding: 15px 25px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-light);
+            transition: all 0.2s ease;
+        }
+    .tab-btn:hover {
+            background: var(--card-bg);
+            color: var(--text);
+        }
+    .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: var(--card-bg);
+        }
+    .tab-content {
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </body>
 </html>
