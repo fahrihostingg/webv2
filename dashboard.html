@@ -1,541 +1,202 @@
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Pahri v1.9.0</title>
+    <title>Dashboard - Pahri v1.7.2</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="supabase.js"></script>
     <script>
         (function() {
-            const theme = localStorage.getItem('theme') || 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark-mode');
+            }
         })();
     </script>
 </head>
-<body>
+<body class="dashboard-body">
     <div class="dashboard">
-        <!-- HEADER - UPDATE: Tambah notif bell + role badge -->
         <div class="dashboard-header">
             <div>
-                <h1>📊 Dashboard <span class="badge badge-info" style="font-size:11px;">v1.9.0</span></h1>
+                <h1>📊 Dashboard <span class="badge badge-info" style="font-size:12px;">v1.7.2</span></h1>
                 <p id="userWelcome">Loading...</p>
             </div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <!-- TAMBAH: Notification Bell -->
-                <button onclick="toggleNotifications()" style="position: relative;">
-                    🔔
-                    <span id="notifBadge" class="badge badge-error" style="position: absolute; top: -8px; right: -8px; display: none;">0</span>
-                </button>
-                
+            <div>
                 <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn">
                     <span id="themeIcon">🌓</span> Tema
                 </button>
-                <button onclick="window.location.href='/store.html'">🛍️ Store</button>
-                <button onclick="window.location.href='/wallet.html'">💰 Wallet</button>
-                <button id="adminBtn" onclick="window.location.href='/admin.html'" style="display:none;">🔧 Admin</button>
-                <button id="devBtn" onclick="window.location.href='/dev-settings.html'" style="display:none;">👑 Dev</button>
+                <button onclick="window.location.href='/profile'">👤 Profile</button>
+                <button onclick="window.location.href='/admin'" id="adminBtn" style="display:none;">🔧 Admin</button>
                 <button onclick="logout()">🚪 Logout</button>
             </div>
         </div>
 
-        <!-- TAMBAH: God Mode Banner untuk Dev -->
-        <div id="godModeBanner" style="display:none;" class="god-mode-banner">
-            👑 GOD MODE ACTIVATED - UNLIMITED POWER 👑
+        <div id="announcementCard" class="card" style="display:none; border-left: 4px solid var(--info);">
+            <h3>📢 Announcement</h3>
+            <p id="announcementText"></p>
         </div>
 
-        <!-- STATS - UPDATE: Real-time + lebih detail -->
         <div class="card">
-            <h3>💰 Saldo & Statistik</h3>
-            <div class="stats" id="userStats">
-                <div class="skeleton skeleton-card"></div>
-                <div class="skeleton skeleton-card"></div>
-                <div class="skeleton skeleton-card"></div>
-                <div class="skeleton skeleton-card"></div>
-            </div>
-        </div>
-
-        <!-- TAMBAH: Quick Actions -->
-        <div class="card">
-            <h3>⚡ Quick Actions</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                <button class="btn-primary" onclick="window.location.href='/wallet.html'">
-                    <span style="font-size: 24px;">💰</span>
-                    <div style="text-align: left;">
-                        <strong>Top Up Saldo</strong>
-                        <small style="display: block; opacity: 0.8;">Deposit instant</small>
-                    </div>
-                </button>
-                <button class="btn-primary" onclick="window.location.href='/store.html'">
-                    <span style="font-size: 24px;">🛒</span>
-                    <div style="text-align: left;">
-                        <strong>Buy Product</strong>
-                        <small style="display: block; opacity: 0.8;">Browse store</small>
-                    </div>
-                </button>
-                <button class="btn-secondary" onclick="showWithdrawModal()">
-                    <span style="font-size: 24px;">💸</span>
-                    <div style="text-align: left;">
-                        <strong>Withdraw</strong>
-                        <small style="display: block; opacity: 0.8;">Min Rp 50k</small>
-                    </div>
-                </button>
-                <button class="btn-secondary" onclick="contactSupport()">
-                    <span style="font-size: 24px;">💬</span>
-                    <div style="text-align: left;">
-                        <strong>Support</strong>
-                        <small style="display: block; opacity: 0.8;">24/7 Live chat</small>
-                    </div>
-                </button>
-            </div>
-        </div>
-
-        <!-- TAMBAH: Charts Row -->
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
-            <div class="card">
-                <h3>📈 Spending Last 7 Days</h3>
-                <canvas id="spendingChart" style="max-height: 300px;"></canvas>
-            </div>
-            <div class="card">
-                <h3>💹 Balance Breakdown</h3>
-                <canvas id="balancePie" style="max-height: 300px;"></canvas>
-            </div>
-        </div>
-
-        <!-- ORDERS & ACTIVITY - UPDATE: 2 columns -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>📦 Recent Orders</h3>
-                    <button class="btn-secondary" onclick="loadOrders()" style="padding: 8px 16px; font-size: 13px;">🔄 Refresh</button>
+            <h3>🎉 Selamat Datang!</h3>
+            <p>Akaun kau dah approved. Nikmati Pahri Platform v1.7.2</p>
+            <div class="stats">
+                <div class="stat-box">
+                    <h3 id="loginCount">0</h3>
+                    <p>🔢 Total Login</p>
                 </div>
-                <div id="myOrders" style="max-height: 400px; overflow-y: auto;"></div>
-            </div>
-
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>📋 Activity Feed</h3>
-                    <button class="btn-secondary" onclick="loadActivityFeed()" style="padding: 8px 16px; font-size: 13px;">🔄 Refresh</button>
+                <div class="stat-box">
+                    <h3 id="lastActive">-</h3>
+                    <p>⏰ Last Active</p>
                 </div>
-                <div id="activityFeed" style="max-height: 400px; overflow-y: auto;"></div>
+                <div class="stat-box">
+                    <h3 id="joinDate">-</h3>
+                    <p>📅 Join Date</p>
+                </div>
+                <div class="stat-box">
+                    <h3 id="notifCount">0</h3>
+                    <p>🔔 Notifications</p>
+                </div>
             </div>
         </div>
 
-        <!-- TRANSACTIONS - KEKAL SAMA -->
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3>📊 Transaction History</h3>
-                <select id="filterTx" onchange="loadTransactions()" style="width: 200px;">
-                    <option value="">All Types</option>
-                    <option value="deposit">Deposit</option>
-                    <option value="purchase">Purchase</option>
-                    <option value="withdraw">Withdraw</option>
-                    <option value="admin_add">Admin Add</option>
-                </select>
+            <h3>🔔 Notifications <button class="btn-secondary" onclick="markAllRead()" style="float:right;font-size:12px;">Mark All Read</button></h3>
+            <div id="notifList" style="max-height: 300px; overflow-y: auto;">
+                <p style="text-align:center;color:#999;">Loading...</p>
             </div>
-            <div id="myTransactions" style="max-height: 500px; overflow-y: auto;"></div>
         </div>
-    </div>
 
-    <!-- TAMBAH: Notification Panel -->
-    <div id="notifPanel" style="display:none; position:fixed; top:80px; right:24px; width:380px; max-height:500px; background:var(--bg-card); border-radius:var(--radius); box-shadow:var(--shadow); border:1px solid var(--border); z-index:9999; overflow:hidden;">
-        <div style="padding:20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin:0;">🔔 Notifications</h3>
-            <button onclick="markAllRead()" style="padding:6px 12px; font-size:12px;">Mark all read</button>
-        </div>
-        <div id="notifList" style="max-height:400px; overflow-y:auto;"></div>
-    </div>
-
-    <!-- TAMBAH: Withdraw Modal -->
-    <div id="withdrawModal" class="modal" onclick="closeWithdrawModal(event)">
-        <div class="modal-content">
-            <h3>💸 Withdraw Saldo</h3>
-            <div class="form-group">
-                <label>Amount (Rp) - Min 50,000</label>
-                <input type="number" id="withdrawAmount" min="50000" placeholder="50000">
-                <small style="color:var(--text-light);">Available: <span id="availableBalance">Rp 0</span></small>
-            </div>
-            <div class="form-group">
-                <label>Bank Name</label>
-                <input type="text" id="withdrawBank" placeholder="BCA / BNI / Mandiri">
-            </div>
-            <div class="form-group">
-                <label>Account Number</label>
-                <input type="text" id="withdrawAccount" placeholder="1234567890">
-            </div>
-            <div class="form-group">
-                <label>Account Name</label>
-                <input type="text" id="withdrawName" placeholder="John Doe">
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 24px;">
-                <button class="btn-primary" onclick="submitWithdraw()" style="flex: 1;">💸 Submit Withdraw</button>
-                <button class="btn-secondary" onclick="closeWithdrawModal()" style="flex: 1;">❌ Cancel</button>
+        <div class="card">
+            <h3>🚀 Quick Actions</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button class="btn-primary" onclick="window.location.href='/profile'">
+                    👤 Edit Profile
+                </button>
+                <button class="btn-secondary" onclick="window.location.href='/forgot-password'">
+                    🔑 Reset Password
+                </button>
+                <button class="btn-secondary" onclick="showToast('Coming soon v1.8.0!', 'info')">
+                    📊 Analytics
+                </button>
             </div>
         </div>
     </div>
 
-    <div class="version-badge"><span class="dot"></span>v1.9.0</div>
+    <div class="version-badge">
+        <span class="dot"></span>v1.7.2
+    </div>
+
     <div id="toastContainer"></div>
 
     <script>
         let currentUser = null;
-        let spendingChart = null;
-        let balanceChart = null;
-        let notifications = [];
-        let unreadCount = 0;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTheme();
+        });
+
+        function applyTheme() {
+            const theme = localStorage.getItem('theme');
+            const isDark = theme === 'dark';
+            
+            if (isDark) {
+                document.documentElement.classList.add('dark-mode');
+                document.body.classList.add('dark-mode');
+                document.getElementById('themeIcon').textContent = '☀️';
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+                document.body.classList.remove('dark-mode');
+                document.getElementById('themeIcon').textContent = '🌙';
+            }
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark? 'light' : 'dark';
+            
+            localStorage.setItem('theme', newTheme);
+            applyTheme();
+            showToast(`Tema tukar ke ${newTheme === 'dark'? 'Gelap' : 'Terang'}!`, 'success');
+        }
 
         (async () => {
-            const auth = await requireLogin();
+            const auth = await checkAuth();
             if (!auth.ok) {
-                window.location.replace('/login.html');
+                showToast(auth.msg, 'error');
+                setTimeout(() => window.location.replace(auth.redirect), 1500);
                 return;
             }
 
             currentUser = auth.profile;
-            document.getElementById('userWelcome').textContent = 
-                `Welcome back, ${currentUser.full_name} ${auth.isGod? '👑' : ''}`;
-
-            // Show god mode banner
-            if (auth.isGod) {
-                document.getElementById('godModeBanner').style.display = 'block';
-                document.getElementById('devBtn').style.display = 'inline-block';
-            }
-
-            // Show admin button
-            if (currentUser.role === 'admin' || auth.isGod) {
-                document.getElementById('adminBtn').style.display = 'inline-block';
-            }
-
-            initTheme();
-            await loadAllData();
-            
-            // REAL-TIME SUBSCRIPTIONS - Auto update tanpa refresh
-            subscribeToTable('transactions', () => {
-                loadAllData();
-                showToast('🔄 Data updated!', 'info', 2000);
-            });
-            subscribeToTable('orders', () => loadOrders());
-            subscribeToTable('profiles', (payload) => {
-                if (payload.new.id === currentUser.id) {
-                    currentUser = payload.new;
-                    updateStats();
-                }
-            });
+            loadDashboard();
+            loadAnnouncement();
+            loadNotifications();
         })();
 
-        async function loadAllData() {
-            await Promise.all([
-                updateStats(),
-                loadOrders(),
-                loadActivityFeed(),
-                loadTransactions(),
-                loadCharts(),
-                loadNotifications()
-            ]);
-        }
-
-        async function updateStats() {
-            const { data: tx } = await supabaseClient
-           .from('transactions')
-           .select('amount, type')
-           .eq('user_id', currentUser.id);
-
-            const totalDeposit = tx?.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0) || 0;
-            const totalSpent = tx?.filter(t => t.type === 'purchase').reduce((sum, t) => sum + Math.abs(t.amount), 0) || 0;
-            const totalOrders = tx?.filter(t => t.type === 'purchase').length || 0;
-
-            document.getElementById('userStats').innerHTML = `
-                <div class="stat-box" style="background: linear-gradient(135deg, #10b981, #059669);">
-                    <h3>${formatCurrency(currentUser.balance)}</h3>
-                    <p>💰 Current Balance</p>
-                </div>
-                <div class="stat-box" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
-                    <h3>${formatCurrency(totalDeposit)}</h3>
-                    <p>📥 Total Deposit</p>
-                </div>
-                <div class="stat-box" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-                    <h3>${formatCurrency(totalSpent)}</h3>
-                    <p>🛒 Total Spent</p>
-                </div>
-                <div class="stat-box" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
-                    <h3>${totalOrders}</h3>
-                    <p>📦 Total Orders</p>
-                </div>
-            `;
-        }
-
-        async function loadCharts() {
-            // Spending chart - last 7 days
-            const { data: tx } = await supabaseClient
-           .from('transactions')
-           .select('amount, created_at')
-           .eq('user_id', currentUser.id)
-           .eq('type', 'purchase')
-           .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-           .order('created_at');
-
-            const days = [];
-            const amounts = [];
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-                const dayStr = date.toLocaleDateString('id-ID', { weekday: 'short' });
-                days.push(dayStr);
-                
-                const dayAmount = tx?.filter(t => {
-                    const tDate = new Date(t.created_at);
-                    return tDate.toDateString() === date.toDateString();
-                }).reduce((sum, t) => sum + Math.abs(t.amount), 0) || 0;
-                amounts.push(dayAmount);
+        async function loadAnnouncement() {
+            const { data } = await supabaseClient.from('system_settings').select('announcement').eq('id', 1).single();
+            if (data && data.announcement) {
+                document.getElementById('announcementCard').style.display = 'block';
+                document.getElementById('announcementText').textContent = data.announcement;
             }
-
-            if (spendingChart) spendingChart.destroy();
-            spendingChart = new Chart(document.getElementById('spendingChart'), {
-                type: 'line',
-                data: {
-                    labels: days,
-                    datasets: [{
-                        label: 'Spending',
-                        data: amounts,
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99,102,241,0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, ticks: { callback: v => 'Rp ' + (v/1000) + 'k' } }
-                    }
-                }
-            });
-
-            // Balance pie
-            const { data: allTx } = await supabaseClient
-           .from('transactions')
-           .select('type, amount')
-           .eq('user_id', currentUser.id);
-
-            const deposit = allTx?.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0) || 0;
-            const spent = allTx?.filter(t => t.type === 'purchase').reduce((s, t) => s + Math.abs(t.amount), 0) || 0;
-            const withdraw = allTx?.filter(t => t.type === 'withdraw').reduce((s, t) => s + Math.abs(t.amount), 0) || 0;
-
-            if (balanceChart) balanceChart.destroy();
-            balanceChart = new Chart(document.getElementById('balancePie'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['Deposit', 'Spent', 'Withdraw'],
-                    datasets: [{
-                        data: [deposit, spent, withdraw],
-                        backgroundColor: ['#10b981', '#8b5cf6', '#f59e0b']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
-            });
-        }
-
-        async function loadOrders() {
-            const { data } = await supabaseClient
-           .from('orders')
-           .select('*, products(name, price, image_url)')
-           .eq('user_id', currentUser.id)
-           .order('created_at', { ascending: false })
-           .limit(5);
-
-            document.getElementById('myOrders').innerHTML =!data || data.length === 0
-                ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No orders yet</p>'
-                : data.map(o => `
-                    <div style="display:flex; gap:12px; padding:16px; border-bottom:1px solid var(--border); align-items:center;">
-                        <img src="${o.products?.image_url || 'https://via.placeholder.com/60'}" 
-                             style="width:60px; height:60px; border-radius:8px; object-fit:cover;">
-                        <div style="flex:1;">
-                            <strong>${o.products?.name || 'Unknown'}</strong>
-                            <br><small style="color:var(--text-light);">${formatDate(o.created_at)}</small>
-                        </div>
-                        <div style="text-align:right;">
-                            <strong style="color:var(--primary);">${formatCurrency(o.total_price)}</strong>
-                            <br><span class="badge badge-${o.status}">${o.status}</span>
-                        </div>
-                    </div>
-                `).join('');
-        }
-
-        async function loadActivityFeed() {
-            const { data } = await supabaseClient
-           .from('activity_logs')
-           .select('*')
-           .eq('user_id', currentUser.id)
-           .order('created_at', { ascending: false })
-           .limit(10);
-
-            document.getElementById('activityFeed').innerHTML =!data || data.length === 0
-                ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No activity yet</p>'
-                : data.map(a => `
-                    <div style="display:flex; gap:12px; padding:12px; border-bottom:1px solid var(--border);">
-                        <div style="font-size:24px;">${getActivityIcon(a.action)}</div>
-                        <div style="flex:1;">
-                            <strong>${a.action.replace(/_/g, ' ')}</strong>
-                            <br><small style="color:var(--text-light);">${formatDate(a.created_at)}</small>
-                        </div>
-                    </div>
-                `).join('');
-        }
-
-        function getActivityIcon(action) {
-            const icons = {
-                login: '🔑', logout: '🚪', purchase: '🛒', deposit: '💰',
-                withdraw: '💸', update_profile: '✏️'
-            };
-            return icons[action] || '📋';
-        }
-
-        async function loadTransactions() {
-            const filter = document.getElementById('filterTx').value;
-            let query = supabaseClient
-           .from('transactions')
-           .select('*')
-           .eq('user_id', currentUser.id)
-           .order('created_at', { ascending: false })
-           .limit(20);
-
-            if (filter) query = query.eq('type', filter);
-
-            const { data } = await query;
-
-            document.getElementById('myTransactions').innerHTML =!data || data.length === 0
-                ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No transactions</p>'
-                : data.map(t => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; padding:16px; border-bottom:1px solid var(--border);">
-                        <div style="display:flex; gap:12px; align-items:center;">
-                            <div style="font-size:28px;">${t.amount > 0? '📥' : '📤'}</div>
-                            <div>
-                                <strong>${t.description}</strong>
-                                <br><small style="color:var(--text-light);">${formatDate(t.created_at)}</small>
-                            </div>
-                        <strong style="color:${t.amount > 0? 'var(--success)' : 'var(--error)'}; font-size:16px;">
-                            ${t.amount > 0? '+' : ''}${formatCurrency(t.amount)}
-                        </strong>
-                    </div>
-                `).join('');
         }
 
         async function loadNotifications() {
-            const { data: orders } = await supabaseClient
-           .from('orders')
-           .select('*, products(name)')
-           .eq('user_id', currentUser.id)
-           .eq('status', 'completed')
-           .order('updated_at', { ascending: false })
-           .limit(5);
+            const { data } = await supabaseClient
+         .from('notifications')
+         .select('*')
+         .eq('user_id', currentUser.id)
+         .order('created_at', { ascending: false })
+         .limit(10);
 
-            notifications = orders?.map(o => ({
-                id: o.id,
-                title: 'Order Completed',
-                message: `${o.products?.name} is ready!`,
-                time: o.updated_at,
-                read: false
-            })) || [];
+            const notifList = document.getElementById('notifList');
+            const unread = data? data.filter(n =>!n.is_read).length : 0;
+            document.getElementById('notifCount').textContent = unread;
 
-            unreadCount = notifications.filter(n =>!n.read).length;
-            updateNotifBadge();
-            renderNotifications();
-        }
-
-        function updateNotifBadge() {
-            const badge = document.getElementById('notifBadge');
-            if (unreadCount > 0) {
-                badge.textContent = unreadCount;
-                badge.style.display = 'block';
-            } else {
-                badge.style.display = 'none';
+            if (!data || data.length === 0) {
+                notifList.innerHTML = '<p style="text-align:center;color:#999;">No notifications</p>';
+                return;
             }
-        }
 
-        function renderNotifications() {
-            document.getElementById('notifList').innerHTML = notifications.length === 0
-                ? '<p style="text-align:center;color:var(--text-muted);padding:40px;">No notifications</p>'
-                : notifications.map(n => `
-                    <div style="padding:16px; border-bottom:1px solid var(--border); ${!n.read? 'background:rgba(99,102,241,0.1);' : ''}">
-                        <strong>${n.title}</strong>
-                        <p style="margin:4px 0; color:var(--text-light); font-size:14px;">${n.message}</p>
-                        <small style="color:var(--text-muted);">${formatDate(n.time)}</small>
+            notifList.innerHTML = data.map(n => `
+                <div style="padding: 12px; border-bottom: 1px solid var(--border); ${n.is_read? 'opacity: 0.6;' : 'background: var(--bg);'}">
+                    <div style="display:flex;justify-content:space-between;align-items:start;">
+                        <div style="flex:1;">
+                            <strong style="font-size:14px;">${n.title}</strong>
+                            <p style="margin:4px 0;font-size:13px;color:var(--text-light);">${n.message}</p>
+                            <small style="color:var(--text-muted);font-size:11px;">${new Date(n.created_at).toLocaleString('id-ID')}</small>
+                        </div>
+                        ${!n.is_read? `<button onclick="markRead('${n.id}')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:12px;">Mark Read</button>` : ''}
                     </div>
-                `).join('');
+                </div>
+            `).join('');
         }
 
-        function toggleNotifications() {
-            const panel = document.getElementById('notifPanel');
-            panel.style.display = panel.style.display === 'none'? 'block' : 'none';
+        async function markRead(notifId) {
+            await supabaseClient.from('notifications').update({ is_read: true }).eq('id', notifId);
+            loadNotifications();
         }
 
-        function markAllRead() {
-            notifications.forEach(n => n.read = true);
-            unreadCount = 0;
-            updateNotifBadge();
-            renderNotifications();
-            showToast('All notifications marked as read', 'success');
+        async function markAllRead() {
+            await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', currentUser.id);
+            loadNotifications();
+            showToast('All marked as read!', 'success');
         }
 
-        function showWithdrawModal() {
-            document.getElementById('availableBalance').textContent = formatCurrency(currentUser.balance);
-            document.getElementById('withdrawModal').classList.add('active');
-        }
+        function loadDashboard() {
+            document.getElementById('userWelcome').textContent = `Hi, ${currentUser.full_name || currentUser.email}`;
+            document.getElementById('loginCount').textContent = currentUser.login_count || 0;
+            document.getElementById('lastActive').textContent = currentUser.last_active 
+           ? new Date(currentUser.last_active).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                : 'Baru je';
+            document.getElementById('joinDate').textContent = new Date(currentUser.created_at).toLocaleDateString('id-ID');
 
-        function closeWithdrawModal(e) {
-            if (e && e.target!== e.currentTarget) return;
-            document.getElementById('withdrawModal').classList.remove('active');
-        }
-
-        async function submitWithdraw() {
-            const amount = parseFloat(document.getElementById('withdrawAmount').value);
-            const bank = document.getElementById('withdrawBank').value;
-            const account = document.getElementById('withdrawAccount').value;
-            const name = document.getElementById('withdrawName').value;
-
-            if (!amount || amount < 50000) {
-                showToast('Minimum withdraw Rp 50,000', 'error');
-                return;
+            if (currentUser.role === 'admin' || currentUser.role === 'dev') {
+                document.getElementById('adminBtn').style.display = 'inline-block';
             }
-
-            if (amount > currentUser.balance) {
-                showToast('Insufficient balance', 'error');
-                return;
-            }
-
-            if (!bank ||!account ||!name) {
-                showToast('Please fill all fields', 'error');
-                return;
-            }
-
-            const { error } = await supabaseClient.from('withdrawals').insert({
-                user_id: currentUser.id,
-                amount,
-                bank_name: bank,
-                account_number: account,
-                account_name: name,
-                status: 'pending'
-            });
-
-            if (error) {
-                showToast('Error: ' + error.message, 'error');
-                return;
-            }
-
-            showToast('✅ Withdraw request submitted! Wait for admin approval.', 'success');
-            closeWithdrawModal();
-            await loadAllData();
-        }
-
-        function contactSupport() {
-            window.open('https://t.me/pahri_support', '_blank');
         }
 
         async function logout() {
@@ -544,18 +205,21 @@
                 action: 'logout'
             });
             await supabaseClient.auth.signOut();
-            showToast('Logged out successfully', 'success');
-            setTimeout(() => window.location.replace('/login.html'), 1000);
+            showToast('Logout berjaya!', 'success');
+            setTimeout(() => window.location.replace('/login'), 1000);
         }
 
-        // Close notif panel when clicking outside
-        document.addEventListener('click', (e) => {
-            const panel = document.getElementById('notifPanel');
-            const bell = e.target.closest('button');
-            if (!panel.contains(e.target) &&!bell?.onclick?.toString().includes('toggleNotifications')) {
-                panel.style.display = 'none';
-            }
-        });
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span class="toast-icon">${icons[type]}</span><span>${message}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
     </script>
 </body>
 </html>
